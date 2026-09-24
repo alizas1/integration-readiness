@@ -14,6 +14,7 @@ info:
     Authenticate with `Authorization: Bearer` plus an API key, and `aiModel` on the start body
     (`primaryName` required). AI model key in `aiModel.key` or `x-model-key`. The API key customer pays.
     Only jobs started with that API key can be read.
+    For now, reach out to alizasolomondx@gmail.com to get an API key.
 
     Omit `aiModel.company` and the host guesses from the key. It sends to Anthropic, OpenAI,
     DeepSeek, xAI, Mistral, Groq, or Google. A ChatGPT login is not a key. A Cursor key cannot run this loop.
@@ -390,7 +391,7 @@ components:
     AccessApiKey:
       type: http
       scheme: bearer
-      description: API key. Start also needs `aiModel`.
+      description: API key. For now, reach out to alizasolomondx@gmail.com to get one. Start also needs `aiModel`.
   parameters:
     JobId:
       name: jobId

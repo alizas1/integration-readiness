@@ -22,7 +22,7 @@ Host: `https://agent-server-production-a722.up.railway.app`
 
 Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI model key → `{ "error": "an ai model key is required" }` (401). Missing `primaryName` → `{ "error": "primaryName is required" }` (400).
 
-Only jobs started with that API key can be read.
+Only jobs started with that API key can be read. For now, reach out to alizasolomondx@gmail.com to get an API key.
 
 **Note:** There is no list call — make sure to keep the `jobId` from the 202. Without it the job cannot be looked up. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
 
