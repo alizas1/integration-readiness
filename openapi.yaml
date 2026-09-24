@@ -1,0 +1,683 @@
+openapi: 3.1.0
+info:
+  title: Review Server API
+  version: "2026-09-16"
+  description: |
+    Hosted jobs that run a Developer Success Risk Review, a Validation, or a Combined report.
+
+    Machine-readable flows: `arazzo.yaml`. Agent how-to: `SKILL.md`. This file is the machine-readable contract for caller methods
+    (health, three starts, GET job info and files, POST to write the fix file on a job that already has a report, and the optional POST to `callbackUrl`).
+    There is no list call. Keep the `jobId` from the 202. Without it the job cannot be looked up.
+    Jobs and their files stay on the host for 3 months.
+    It does not describe GitHub method-file loads, fetching their pages, or the AI loop.
+
+    Authenticate with `Authorization: Bearer` plus an API key, and `aiModel` on the start body
+    (`primaryName` required). AI model key in `aiModel.key` or `x-model-key`. The API key customer pays.
+    Only jobs started with that API key can be read.
+
+    Omit `aiModel.company` and the host guesses from the key. It sends to Anthropic, OpenAI,
+    DeepSeek, xAI, Mistral, Groq, or Google. A ChatGPT login is not a key. A Cursor key cannot run this loop.
+servers:
+  - url: https://agent-server-production-a722.up.railway.app
+    description: Live host
+tags:
+  - name: Health
+  - name: Starts
+  - name: Jobs
+security: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /review:
+    post:
+      tags: [Starts]
+      summary: Start a Review
+      operationId: postReview
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XModelKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewOrValidationStart"
+            examples:
+              customer:
+                summary: Customer, resources
+                value:
+                  title: example API
+                  resources:
+                    - https://example.com/docs
+                  useCases:
+                    specified:
+                      - list things
+                  aiModel:
+                    primaryName: claude-sonnet-4-5
+              priorReport:
+                summary: Run again from a prior Review
+                value:
+                  priorReport:
+                    jobId: "00000000-0000-0000-0000-000000000000"
+                  aiModel:
+                    primaryName: claude-sonnet-4-5
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedJob"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "503":
+          $ref: "#/components/responses/ErrorJson"
+      callbacks:
+        jobResult:
+          "{$request.body#/callbackUrl}":
+            post:
+              summary: One-try POST of the result (best-effort)
+              description: |
+                If `callbackUrl` was set and the job has a report (or findings could not be read).
+                One try. Any HTTP status is ignored. The body is not read.
+                If this POST does not arrive, GET `/jobs/{jobId}/info` then the files.
+                Receiver must be safe to run twice.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/CallbackBody"
+              responses:
+                "2XX":
+                  description: Received. Empty body is fine.
+
+  /validation:
+    post:
+      tags: [Starts]
+      summary: Start a Validation
+      description: Needs a Review job (or a previous Validation to run again) that has `report.md`.
+      operationId: postValidation
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XModelKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewOrValidationStart"
+            examples:
+              fromReview:
+                summary: Validate a Review
+                value:
+                  priorReport:
+                    jobId: "00000000-0000-0000-0000-000000000000"
+                  aiModel:
+                    primaryName: claude-sonnet-4-5
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedJob"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "503":
+          $ref: "#/components/responses/ErrorJson"
+      callbacks:
+        jobResult:
+          "{$request.body#/callbackUrl}":
+            post:
+              summary: One-try POST of the result (best-effort)
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/CallbackBody"
+              responses:
+                "2XX":
+                  description: Received. Empty body is fine.
+
+  /combined:
+    post:
+      tags: [Starts]
+      summary: Start a Combined report
+      description: Needs a Review job and a Validation job, each with `report.md`.
+      operationId: postCombined
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XModelKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CombinedStart"
+            examples:
+              twoJobs:
+                value:
+                  priorReport:
+                    jobId:
+                      - "00000000-0000-0000-0000-000000000001"
+                      - "00000000-0000-0000-0000-000000000002"
+                  aiModel:
+                    primaryName: claude-sonnet-4-5
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedJob"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "503":
+          $ref: "#/components/responses/ErrorJson"
+      callbacks:
+        jobResult:
+          "{$request.body#/callbackUrl}":
+            post:
+              summary: One-try POST of the result (best-effort)
+              description: Same body as Review. No `pathMarkdown`.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/CallbackBody"
+              responses:
+                "2XX":
+                  description: Received. Empty body is fine.
+
+  /jobs/{jobId}/info:
+    get:
+      tags: [Jobs]
+      summary: Job info
+      operationId: getJobInfo
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobInfo"
+              examples:
+                completed:
+                  summary: Completed Review
+                  value:
+                    id: "00000000-0000-0000-0000-000000000000"
+                    status: Completed
+                    type: Review
+                    title: example API
+                    startedAt: "2026-09-15T12:00:00.000Z"
+                    finishedAt: "2026-09-15T12:20:00.000Z"
+                    score: 76
+                    scoreStatus: "The report says score: 70, but counting the findings adds up to 76."
+                    summary: what we found
+                failed:
+                  summary: Failed
+                  value:
+                    id: "00000000-0000-0000-0000-000000000000"
+                    status: Failed
+                    type: Review
+                    title: example API
+                    startedAt: "2026-09-15T12:00:00.000Z"
+                    finishedAt: "2026-09-15T12:05:00.000Z"
+                    failureDetails: Request timed out.
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+
+  /jobs/{jobId}/report:
+    get:
+      tags: [Jobs]
+      summary: Report markdown
+      operationId: getJobReport
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Report exists
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          description: "`no report yet` while In progress (wait); `not found` if the ID is unknown"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /jobs/{jobId}/fix:
+    get:
+      tags: [Jobs]
+      summary: Fix file markdown
+      operationId: getJobFix
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Fix file exists
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` `fix file was not saved` is the end. GET does not write the file."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+    post:
+      tags: [Jobs]
+      summary: Write the fix file on this job
+      description: |
+        The job must already have `report.md`. Writes `fix.md` on this same job.
+        202 `{ "jobId" }` is that same ID. Then GET info until Completed or Failed, then GET the fix file.
+        If `fix.md` is already there, this run overwrites it.
+        Job In progress → `{ "error": "job is in progress" }` (400).
+        No report → `{ "error": "no report yet" }` (404).
+        Customer body needs `aiModel` (`primaryName` required) the same as a start.
+        `.md` on the path still works.
+      operationId: postJobFix
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/XModelKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateFixStart"
+            examples:
+              customer:
+                summary: Same authenticate as a start.
+                value:
+                  aiModel:
+                    primaryName: claude-sonnet-4-5
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedJob"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+        "503":
+          $ref: "#/components/responses/ErrorJson"
+
+  /jobs/{jobId}/path:
+    get:
+      tags: [Jobs]
+      summary: Path file markdown (Validation)
+      operationId: getJobPath
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Path file exists
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          description: "`no path file yet` while it is not written (wait); `not found` if the ID is unknown"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /jobs/{jobId}/calls.json:
+    get:
+      tags: [Jobs]
+      summary: Page GETs and model rounds
+      operationId: getJobCalls
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Call list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallList"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "404":
+          description: "`not found` if the call list is not written yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+components:
+  securitySchemes:
+    AccessApiKey:
+      type: http
+      scheme: bearer
+      description: API key. Start also needs `aiModel`.
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    XModelKey:
+      name: x-model-key
+      in: header
+      required: false
+      description: Customer AI model key if not in `aiModel.key`. If both are sent and differ → 400.
+      schema:
+        type: string
+  responses:
+    AcceptedJob:
+      description: Job started
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Accepted"
+          examples:
+            started:
+              value:
+                jobId: "00000000-0000-0000-0000-000000000000"
+    ErrorJson:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+          examples:
+            unauthorized:
+              value:
+                error: unauthorized
+            missingResourceOrPrior:
+              value:
+                error: at least one resource or prior report is required
+  schemas:
+    Health:
+      type: object
+      required: [ok]
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+    ErrorBody:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          description: Human-readable string. No `code` or `details` field.
+      examples:
+        - error: unauthorized
+        - error: at least one resource or prior report is required
+        - error: primaryName is required
+        - error: an ai model key is required
+        - error: a Cursor key cannot run this loop
+        - error: could not tell which company this key is for
+        - error: two different ai models were sent - resend with one model.
+        - error: a Review job and a Validation job are required
+        - error: not found
+        - error: no report yet
+        - error: no path file yet
+        - error: job is in progress
+    Accepted:
+      type: object
+      required: [jobId]
+      additionalProperties: false
+      properties:
+        jobId:
+          type: string
+          format: uuid
+    AiModel:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          description: Their AI model key if not in `x-model-key`.
+        primaryName:
+          type: string
+          description: Required on a customer start.
+        cheapName:
+          type: string
+          description: Omit and `primaryName` is used for every pass.
+        company:
+          type: string
+          description: anthropic / claude, openai / chatgpt / gpt, deepseek, xai / grok, mistral, groq, google / gemini. Omit and the host guesses from the key.
+    UseCases:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          properties:
+            specified:
+              type: array
+              items:
+                type: string
+        - type: array
+          items:
+            type: string
+    PriorReport:
+      type: object
+      additionalProperties: false
+      properties:
+        jobId:
+          description: One ID, a list of IDs, or a comma-separated string.
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+    ReviewOrValidationStart:
+      type: object
+      additionalProperties: false
+      description: At least one of `resources` or `priorReport` is required.
+      properties:
+        resources:
+          description: URL strings, or a single string.
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+        title:
+          type: string
+          default: ""
+        useCases:
+          $ref: "#/components/schemas/UseCases"
+        stage:
+          type: string
+          enum: [Design, Publish]
+          description: Not implemented yet.
+        aiModel:
+          $ref: "#/components/schemas/AiModel"
+        callbackUrl:
+          type: string
+          format: uri
+        priorReport:
+          $ref: "#/components/schemas/PriorReport"
+    GenerateFixStart:
+      type: object
+      additionalProperties: false
+      required: [aiModel]
+      description: `aiModel` is required (`primaryName` required), the same as a start.
+      properties:
+        aiModel:
+          $ref: "#/components/schemas/AiModel"
+        callbackUrl:
+          type: string
+          format: uri
+    CombinedStart:
+      type: object
+      additionalProperties: false
+      required: [priorReport]
+      description: One Review job and one Validation job, both with `report.md`.
+      properties:
+        priorReport:
+          $ref: "#/components/schemas/PriorReport"
+        title:
+          type: string
+          default: ""
+        aiModel:
+          $ref: "#/components/schemas/AiModel"
+        callbackUrl:
+          type: string
+          format: uri
+    JobInfo:
+      type: object
+      required: [id, status, type, title, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [In progress, Completed, Failed]
+        type:
+          type: string
+          enum: [Review, Validation, Combined]
+        title:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          description: When status is Completed or Failed.
+        failureDetails:
+          type: string
+          description: When status is Failed. A string, not an object.
+        score:
+          type: number
+          description: When parsed. If scoreStatus is present, this is the second number in that string.
+        scoreStatus:
+          type: string
+          description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string. Omitted when the two numbers already matched.
+        summary:
+          type: string
+        fixFileStatus:
+          type: string
+          enum: ["fix file was not saved"]
+          description: Report exists and fix.md does not.
+    CallbackBody:
+      type: object
+      required: [jobId, type, status, reportMarkdown, fixMarkdown]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [Review, Validation, Combined]
+        status:
+          type: string
+          enum: [Completed, Failed]
+        score:
+          type: number
+          description: When parsed. If scoreStatus is present, this is the second number in that string.
+        summary:
+          type: string
+        scoreStatus:
+          type: string
+          description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string.
+        failureDetails:
+          type: string
+        reportMarkdown:
+          type: string
+        fixMarkdown:
+          type: string
+          description: Empty string when there is no fix file or findings could not be read.
+        pathMarkdown:
+          type: string
+          description: Validation only.
+    CallList:
+      type: array
+      items:
+        oneOf:
+          - $ref: "#/components/schemas/CallFetch"
+          - $ref: "#/components/schemas/CallModel"
+    CallFetch:
+      type: object
+      required: [kind, at, method, url, status, bytes, contentType]
+      properties:
+        kind:
+          type: string
+          enum: [fetch]
+        at:
+          type: string
+          format: date-time
+        method:
+          type: string
+        url:
+          type: string
+        status:
+          description: Number, or null if blocked
+          oneOf:
+            - type: integer
+            - type: "null"
+        bytes:
+          type: integer
+        contentType:
+          type: string
+        error:
+          type: string
+    CallModel:
+      type: object
+      required: [kind, at, model, tokensIn, tokensOut, tools]
+      properties:
+        kind:
+          type: string
+          enum: [model]
+        at:
+          type: string
+          format: date-time
+        model:
+          type: string
+        tokensIn:
+          type: integer
+        tokensOut:
+          type: integer
+        tools:
+          type: array
+          items:
+            type: string

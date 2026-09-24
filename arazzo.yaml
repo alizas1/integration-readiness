@@ -1,0 +1,474 @@
+arazzo: 1.0.1
+info:
+  title: Review Server API
+  version: "2026-09-16"
+  description: |
+    Written **2026-09-16**.
+
+    Machine-readable flows for the Review Server API. Step order and handoffs
+    (`jobId` from the 202 into later GETs and `priorReport`).
+    Contract: `openapi.yaml`. Agent how-to: `SKILL.md`.
+
+    Typical sequence: Review → Validation → Combined (`review-then-validation-then-combined`).
+
+    The server POSTs to `callbackUrl` when there is a report. One try. That POST
+    is not a caller step here. These GET steps still run.
+
+    `GET /jobs/{jobId}/info` is not in these sequences. It is a separate call
+    (`getJobInfo`) when the caller wants status, `score`, `scoreStatus`, or
+    `fixFileStatus`.
+
+    Customer starts send `aiModel` on the body at runtime (`primaryName` required).
+    This file does not hold keys.
+sourceDescriptions:
+  - name: api
+    url: ./openapi.yaml
+    type: openapi
+
+workflows:
+  - workflowId: review
+    summary: A through read-through of the published docs and spec based on use cases.
+    description: |
+      Writes `report.md` and `fix.md`. `POST /review` with `resources`.
+      Keep `jobId` from the 202. There is no list call.
+    inputs:
+      type: object
+      required: [resources]
+      properties:
+        resources:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        specified:
+          type: array
+          items:
+            type: string
+        callbackUrl:
+          type: string
+          format: uri
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /review. Expected 202 `{ "jobId" }`. Every start POST is a new job.
+        operationId: postReview
+        requestBody:
+          contentType: application/json
+          payload:
+            resources: $inputs.resources
+            title: $inputs.title
+            callbackUrl: $inputs.callbackUrl
+            useCases:
+              specified: $inputs.specified
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getReport
+        description: |
+          GET /jobs/{jobId}/report. 200 the report.
+          404 `{ "error": "no report yet" }` while In progress.
+          404 `{ "error": "not found" }` unknown jobId.
+          There is no rate limit. Wait `[how often]` between GETs.
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        description: |
+          GET /jobs/{jobId}/fix. 200 the fix file.
+          404 `{ "error": "not found" }` is unknown jobId or no fix file yet.
+          Wait while In progress. Stop when info `fixFileStatus` is `fix file was not saved`.
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+
+  - workflowId: check-and-fetch
+    summary: The result from a job that already exists, when the callback did not arrive, or to pull again.
+    description: |
+      GET report then GET fix. On Validation, also GET /jobs/{jobId}/path
+      (`getJobPath` / the `validation` workflow’s getPath step).
+    inputs:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+    steps:
+      - stepId: getReport
+        description: |
+          GET /jobs/{jobId}/report. 200 the report.
+          404 `{ "error": "no report yet" }` while In progress.
+          404 `{ "error": "not found" }` unknown jobId.
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $inputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        description: |
+          GET /jobs/{jobId}/fix. 200 the fix file.
+          404 `{ "error": "not found" }` is unknown jobId or no fix file yet.
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $inputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+
+  - workflowId: generate-fix
+    summary: Write the fix file on a job that already has a report.
+    description: |
+      POST /jobs/{jobId}/fix. Same job. GET does not write the file.
+      If the job is In progress, this call is refused.
+    inputs:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /jobs/{jobId}/fix. Expected 202 `{ "jobId" }` with that same ID.
+        operationId: postJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $inputs.jobId
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getFix
+        description: |
+          GET /jobs/{jobId}/fix. 200 the fix file.
+          404 `{ "error": "not found" }` while it is not written.
+          Wait while In progress. Stop when info `fixFileStatus` is `fix file was not saved`.
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForFix
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'not found'
+
+  - workflowId: run-again
+    summary: Rerun of a Review, based on a prior Review. Uses the same use cases as the original.
+    description: |
+      `POST /review` with `priorReport.jobId`. That job must have a `report.md`.
+      If `resources` are also sent, this job uses the prior job’s URLs and the new ones. None are dropped.
+    inputs:
+      type: object
+      required: [priorJobId]
+      properties:
+        priorJobId:
+          type: string
+          format: uuid
+        resources:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        specified:
+          type: array
+          items:
+            type: string
+        callbackUrl:
+          type: string
+          format: uri
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /review with priorReport. Expected 202 `{ "jobId" }`.
+        operationId: postReview
+        requestBody:
+          contentType: application/json
+          payload:
+            priorReport:
+              jobId: $inputs.priorJobId
+            resources: $inputs.resources
+            title: $inputs.title
+            callbackUrl: $inputs.callbackUrl
+            useCases:
+              specified: $inputs.specified
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getReport
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+
+  - workflowId: validation
+    summary: A real build of the use cases.
+    description: |
+      Writes `report.md`, `fix.md`, and `path.md`.
+      `POST /validation` with `priorReport.jobId` of a Review that has `report.md`.
+      To run a Validation again, that id is the previous Validation job.
+    inputs:
+      type: object
+      required: [reviewJobId]
+      properties:
+        reviewJobId:
+          type: string
+          format: uuid
+          description: Review job id, or a previous Validation job id to run again.
+        resources:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        specified:
+          type: array
+          items:
+            type: string
+        callbackUrl:
+          type: string
+          format: uri
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /validation. Expected 202 `{ "jobId" }`.
+        operationId: postValidation
+        requestBody:
+          contentType: application/json
+          payload:
+            priorReport:
+              jobId: $inputs.reviewJobId
+            resources: $inputs.resources
+            title: $inputs.title
+            callbackUrl: $inputs.callbackUrl
+            useCases:
+              specified: $inputs.specified
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getReport
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+      - stepId: getPath
+        description: |
+          GET /jobs/{jobId}/path. 200 the path file.
+          404 `{ "error": "no path file yet" }` while it is not written.
+        operationId: getJobPath
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForPath
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no path file yet'
+
+  - workflowId: combined
+    summary: One Combined report from a Review job and a Validation job.
+    description: |
+      Writes `report.md` and `fix.md`. `path.md` stays on the Validation job.
+      Intended for a Review and a Validation of the same use cases. The host does not check.
+      Unrelated jobs will combine to create a misleading report.
+    inputs:
+      type: object
+      required: [reviewJobId, validationJobId]
+      properties:
+        reviewJobId:
+          type: string
+          format: uuid
+        validationJobId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        callbackUrl:
+          type: string
+          format: uri
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /combined with two job ids. Expected 202 `{ "jobId" }`.
+        operationId: postCombined
+        requestBody:
+          contentType: application/json
+          payload:
+            priorReport:
+              jobId:
+                - $inputs.reviewJobId
+                - $inputs.validationJobId
+            title: $inputs.title
+            callbackUrl: $inputs.callbackUrl
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getReport
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+
+  - workflowId: review-then-validation-then-combined
+    summary: Typical sequence. Review, then Validation, then Combined.
+    description: |
+      Handoff is `jobId` from each 202. Validation `priorReport` is the Review id.
+      Combined `priorReport` is the Review id and the Validation id.
+    inputs:
+      type: object
+      required: [resources]
+      properties:
+        resources:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        specified:
+          type: array
+          items:
+            type: string
+        callbackUrl:
+          type: string
+          format: uri
+    outputs:
+      reviewJobId: $steps.review.outputs.jobId
+      validationJobId: $steps.validation.outputs.jobId
+      combinedJobId: $steps.combined.outputs.jobId
+    steps:
+      - stepId: review
+        workflowId: review
+        parameters:
+          - name: resources
+            value: $inputs.resources
+          - name: title
+            value: $inputs.title
+          - name: specified
+            value: $inputs.specified
+          - name: callbackUrl
+            value: $inputs.callbackUrl
+      - stepId: validation
+        workflowId: validation
+        parameters:
+          - name: reviewJobId
+            value: $steps.review.outputs.jobId
+          - name: callbackUrl
+            value: $inputs.callbackUrl
+      - stepId: combined
+        workflowId: combined
+        parameters:
+          - name: reviewJobId
+            value: $steps.review.outputs.jobId
+          - name: validationJobId
+            value: $steps.validation.outputs.jobId
+          - name: callbackUrl
+            value: $inputs.callbackUrl
