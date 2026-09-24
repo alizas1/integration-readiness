@@ -539,7 +539,7 @@ components:
       type: object
       additionalProperties: false
       required: [aiModel]
-      description: `aiModel` is required (`primaryName` required), the same as a start.
+      description: "`aiModel` is required (`primaryName` required), the same as a start."
       properties:
         aiModel:
           $ref: "#/components/schemas/AiModel"
