@@ -8,7 +8,7 @@ description: >
 
 # Review Server API
 
-Written **2026-09-16**. Updated **2026-09-17**.
+Written **2026-09-16**. Updated **2026-10-02**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -23,6 +23,10 @@ Host: `https://agent-server-production-a722.up.railway.app`
 Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI model key → `{ "error": "an ai model key is required" }` (401). Missing `primaryName` → `{ "error": "primaryName is required" }` (400).
 
 Only jobs started with that API key can be read. For now, reach out to alizasolomondx@gmail.com to get an API key.
+
+## What counts
+
+Each accepted start counts as one call: review, validation, combined, or run-again. If that job ends with no report, the call is put back. A saved report keeps the call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. Included is 15. Included returns to 15 and used returns to 0 only when they pay for another month. A top-up adds 3 to included and does not change used or the paid-through date. The server refuses the start when used has reached included, or the paid-through date has passed. An accepted start returns `left` (included minus used). A refusal is 402 and includes `left` when the server knows the number. Fetching a finished job is not counted. Writing the fix file is not counted.
 
 **Note:** There is no list call — make sure to keep the `jobId` from the 202. Without it the job cannot be looked up. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
 
