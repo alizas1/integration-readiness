@@ -19,7 +19,7 @@ info:
     Authentication:
     Authenticate with `Authorization: Bearer` plus an API key, and `aiModel` on the start body
     (`primaryName` required). AI model key in `aiModel.key` or `x-model-key`. 
-    Purchase an API key at trailcheck.dev.
+    Purchase an API key at https://trailcheck.dev/.
     Provide your own AI model key.
 
     Supported AI model keys: Anthropic, OpenAI, DeepSeek, xAI, Mistral, Groq, and Google. 
