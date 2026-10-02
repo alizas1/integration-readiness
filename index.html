@@ -11,6 +11,9 @@
     <script>
       Scalar.createApiReference("#app", {
         url: "https://alizas1.github.io/integration-readiness/openapi.yaml",
+        authentication: {
+          preferredSecurityScheme: "AccessApiKey",
+        },
       })
     </script>
   </body>

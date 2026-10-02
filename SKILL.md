@@ -22,11 +22,11 @@ Host: `https://agent-server-production-a722.up.railway.app`
 
 Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI model key → `{ "error": "an ai model key is required" }` (401). Missing `primaryName` → `{ "error": "primaryName is required" }` (400).
 
-Only jobs started with that API key can be read. For now, reach out to alizasolomondx@gmail.com to get an API key.
+Only jobs started with that API key can be read. Purchase an API key at https://trailcheck.dev/.
 
 ## What counts
 
-Each accepted start counts as one call: review, validation, combined, or run-again. If that job ends with no report, the call is put back. A saved report keeps the call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. Included is 15. Included returns to 15 and used returns to 0 only when they pay for another month. A top-up adds 3 to included and does not change used or the paid-through date. The server refuses the start when used has reached included, or the paid-through date has passed. An accepted start returns `left` (included minus used). A refusal is 402 and includes `left` when the server knows the number. Fetching a finished job is not counted. Writing the fix file is not counted.
+Each accepted start counts as one call: review, validation, or combined, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. A saved report counts as one call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, the response says how many calls are still available. When the server refuses the start, the status is 402, and the response says how many calls are still available when it knows that number. Calls to fetch a finished job and write a fix file do not count toward the call quota.
 
 **Note:** There is no list call — make sure to keep the `jobId` from the 202. Without it the job cannot be looked up. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
 
