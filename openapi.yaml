@@ -26,7 +26,7 @@ info:
     A ChatGPT login is not a key. A Cursor key cannot run this loop.
     If you omit `aiModel.company` the host guesses from the key.
 
-    Each accepted start counts as one call: review, validation, or combined, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. 
+    Each accepted start counts as one call: review, validation, or combine, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. 
     A saved report counts as one call. 
     Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). 
     However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. 
@@ -168,7 +168,7 @@ paths:
                 "2XX":
                   description: Received. Empty body is fine.
 
-  /combined:
+  /combine:
     post:
       tags: [Starts]
       summary: Start a Combined report
