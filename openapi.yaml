@@ -40,7 +40,8 @@ tags:
   - name: Health
   - name: Starts
   - name: Jobs
-security: []
+security:
+  - AccessApiKey: []
 paths:
   /health:
     get:
@@ -406,7 +407,7 @@ components:
     AccessApiKey:
       type: http
       scheme: bearer
-      description: API key. For now, reach out to alizasolomondx@gmail.com to get one. Start also needs `aiModel`.
+      description: API key. Purchase an API key at https://trailcheck.dev/.
   parameters:
     JobId:
       name: jobId
