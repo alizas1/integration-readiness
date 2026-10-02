@@ -378,7 +378,7 @@ workflows:
       jobId: $steps.start.outputs.jobId
     steps:
       - stepId: start
-        description: POST /combined with two job ids. Expected 202 `{ "jobId" }`.
+        description: POST /combine with two job ids. Expected 202 `{ "jobId" }`.
         operationId: postCombined
         requestBody:
           contentType: application/json
