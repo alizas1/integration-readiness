@@ -3,23 +3,36 @@ info:
   title: Review Server API
   version: "2026-10-02"
   description: |
-    Hosted jobs that run a Developer Success Risk Review, a Validation, or a Combined report.
-
-    Machine-readable flows: `arazzo.yaml`. Agent how-to: `SKILL.md`. This file is the machine-readable contract for caller methods
+    TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.
+    The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases, then combine: combines the findings from the earlier steps into one report.
+    A failure on one call does not affect the outputs from earlier calls.
+    
+    This file is the machine-readable contract for caller methods
     (health, three starts, GET job info and files, POST to write the fix file on a job that already has a report, and the optional POST to `callbackUrl`).
     There is no list call. Keep the `jobId` from the 202. Without it the job cannot be looked up.
     Jobs and their files stay on the host for 3 months.
-    It does not describe GitHub method-file loads, fetching their pages, or the AI loop.
 
+    Other resources:
+    Machine-readable flows: `arazzo.yaml`. 
+    Agent how-to: `SKILL.md`. 
+
+    Authentication:
     Authenticate with `Authorization: Bearer` plus an API key, and `aiModel` on the start body
-    (`primaryName` required). AI model key in `aiModel.key` or `x-model-key`. The API key customer pays.
-    Only jobs started with that API key can be read.
-    For now, reach out to alizasolomondx@gmail.com to get an API key.
+    (`primaryName` required). AI model key in `aiModel.key` or `x-model-key`. 
+    Purchase an API key at trailcheck.dev.
+    Provide your own AI model key.
 
-    Each accepted start counts as one call: review, validation, combined, or run-again. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. A saved report counts as one call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, the response says how many calls are still available. When the server refuses the start, the status is 402, and the response says how many calls are still available when it knows that number. Calls to fetch a finished job and write a fix file do not count toward the call quota.
+    Supported AI model keys: Anthropic, OpenAI, DeepSeek, xAI, Mistral, Groq, and Google. 
+    A ChatGPT login is not a key. A Cursor key cannot run this loop.
+    If you omit `aiModel.company` the host guesses from the key.
 
-    Omit `aiModel.company` and the host guesses from the key. It sends to Anthropic, OpenAI,
-    DeepSeek, xAI, Mistral, Groq, or Google. A ChatGPT login is not a key. A Cursor key cannot run this loop.
+    Each accepted start counts as one call: review, validation, or combined, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. 
+    A saved report counts as one call. 
+    Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). 
+    However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. 
+    The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, the response says how many calls are still available. 
+    When the server refuses the start, the status is 402, and the response says how many calls are still available when it knows that number. 
+    Calls to fetch a finished job and write a fix file do not count toward the call quota.
 servers:
   - url: https://agent-server-production-a722.up.railway.app
     description: Live host
