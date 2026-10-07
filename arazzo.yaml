@@ -48,6 +48,9 @@ workflows:
         callbackUrl:
           type: string
           format: uri
+        guidelines:
+          type: string
+          description: Markdown of their API conventions. Omit when they have none.
     outputs:
       jobId: $steps.start.outputs.jobId
     steps:
@@ -60,6 +63,7 @@ workflows:
             resources: $inputs.resources
             title: $inputs.title
             callbackUrl: $inputs.callbackUrl
+            guidelines: $inputs.guidelines
             useCases:
               specified: $inputs.specified
         successCriteria:
@@ -197,6 +201,8 @@ workflows:
     description: |
       `POST /review` with `priorReport.jobId`. That job must have a `report.md`.
       If `resources` are also sent, this job uses the prior job’s URLs and the new ones. None are dropped.
+      If `guidelines` is omitted, this job uses the guidelines from that prior Review when that job had them.
+      A `guidelines` string on this start is the file for this job.
     inputs:
       type: object
       required: [priorJobId]
@@ -217,6 +223,9 @@ workflows:
         callbackUrl:
           type: string
           format: uri
+        guidelines:
+          type: string
+          description: Markdown of their API conventions. Omit to keep the prior Review's guidelines when that job had them.
     outputs:
       jobId: $steps.start.outputs.jobId
     steps:
@@ -231,6 +240,7 @@ workflows:
             resources: $inputs.resources
             title: $inputs.title
             callbackUrl: $inputs.callbackUrl
+            guidelines: $inputs.guidelines
             useCases:
               specified: $inputs.specified
         successCriteria:
@@ -440,6 +450,9 @@ workflows:
         callbackUrl:
           type: string
           format: uri
+        guidelines:
+          type: string
+          description: Markdown of their API conventions, sent on the Review.
     outputs:
       reviewJobId: $steps.review.outputs.jobId
       validationJobId: $steps.validation.outputs.jobId
@@ -456,6 +469,8 @@ workflows:
             value: $inputs.specified
           - name: callbackUrl
             value: $inputs.callbackUrl
+          - name: guidelines
+            value: $inputs.guidelines
       - stepId: validation
         workflowId: validation
         parameters:
