@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Review Server API
-  version: "2026-10-02"
+  version: "2026-10-07"
   description: |
     TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.
     The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases, then combine: combines the findings from the earlier steps into one report.
@@ -552,6 +552,14 @@ components:
           format: uri
         priorReport:
           $ref: "#/components/schemas/PriorReport"
+        guidelines:
+          type: string
+          description: >
+            Review only. Markdown of their API conventions. The review checks the API
+            against this file and against the checklist. Omit when they have none.
+            A run-again that omits it uses the guidelines from the prior Review when
+            that job had them. A string on this start is the file for this job.
+            Not a string, or sent on Validation, is an error. Combined rejects this field the same way.
     GenerateFixStart:
       type: object
       additionalProperties: false

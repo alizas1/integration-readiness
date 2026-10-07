@@ -75,3 +75,5 @@ Anything else must be turned into one of these:
 Each entry in `resources` is a string. An object is left out of the job.
 
 A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400).
+
+Optional on a Review: `guidelines`, a markdown string of their API conventions. The review checks the API against that file and against the checklist. Omit it when they have none. On a run-again, omitting it keeps the guidelines from the prior Review when that job had them. A string on this start is the file for this job. Send it on `POST /review`. On Validation or Combined the host returns `{ "error": "send guidelines on the Review start" }` (400). A value that is not a string returns `{ "error": "guidelines must be markdown text" }` (400).
