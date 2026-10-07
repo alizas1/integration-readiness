@@ -8,7 +8,7 @@ description: >
 
 # Review Server API
 
-Written **2026-09-16**. Updated **2026-10-02**.
+Written **2026-09-16**. Updated **2026-10-07**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -63,5 +63,15 @@ For a Review with `resources`:
 ```
 
 HTML, JSON, YAML, Markdown, and plain text are read. PDF, image, audio, video, and `octet-stream` are not.
+
+Send a public URL when the page or file is already available publicly as HTML, JSON, YAML, Markdown, or plain text (This includes OpenAPI files and llms.txt).
+
+Anything else must be turned into one of these:
+
+- A PDF, a Word file, a Google Doc, or a Confluence or Notion export: Markdown. Send that Markdown as its own string in `resources`, or publish it and send the URL.
+- A spec that exists only as an internal file: file text or a string.
+- A screenshot or diagram: written out in words as Markdown. The image file itself is not read.
+
+Each entry in `resources` is a string. An object is left out of the job.
 
 A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400).
