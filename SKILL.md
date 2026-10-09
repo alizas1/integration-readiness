@@ -1,14 +1,14 @@
 ---
 name: review-server
 description: >
-  Start a Review or Validation on the Review Server API, keep the job id, and
+  Start a Review or Validation on the TrailCheck API, keep the job id, and
   fetch the report and fix file. Use when calling this host with an API key
   from an agent.
 ---
 
-# Review Server API
+# TrailCheck API
 
-Written **2026-09-16**. Updated **2026-10-07**.
+Written **2026-09-16**. Updated **2026-10-09**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 

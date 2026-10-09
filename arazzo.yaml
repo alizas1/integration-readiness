@@ -1,11 +1,11 @@
 arazzo: 1.0.1
 info:
-  title: Review Server API
+  title: TrailCheck API
   version: "2026-09-16"
   description: |
     Written **2026-09-16**.
 
-    Machine-readable flows for the Review Server API. Step order and handoffs
+    Machine-readable flows for the TrailCheck API. Step order and handoffs
     (`jobId` from the 202 into later GETs and `priorReport`).
     Contract: `openapi.yaml`. Agent how-to: `SKILL.md`.
 
