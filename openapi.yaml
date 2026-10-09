@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Review Server API
+  title: TrailCheck API
   version: "2026-10-07"
   description: |
     TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.

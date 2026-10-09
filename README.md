@@ -1,8 +1,8 @@
-# Integration Readiness
+# TrailCheck
 
-Written **2026-09-24**. Updated **2026-10-02**.
+Written **2026-09-24**. Updated **2026-10-09**.
 
-Public contract for the Review Server API.
+Public contract for the TrailCheck API.
 
 Purchase an API key at https://trailcheck.dev/.
 
