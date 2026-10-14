@@ -8,13 +8,15 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-10-09**.
+Written **2026-09-16**. Updated **2026-10-14**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
 This file is how to call the host. The how-to that writes the report stays on the host. The caller gets `report.md` and `fix.md` (and `path.md` for Validation flows).
 
 Host: `https://agent-server-production-a722.up.railway.app`
+
+Before the run starts, offer to make a sound when the process is complete. Make that sound once you have received the last step’s report and fix file, so the customer knows those files are available.
 
 ## Authenticate
 
@@ -26,13 +28,15 @@ Only jobs started with that API key can be read. Purchase an API key at https://
 
 ## What counts
 
-Each accepted start counts as one call: review, validation, or combine, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. A saved report counts as one call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, the response says how many calls are still available. When the server refuses the start, the status is 402, and the response says how many calls are still available when it knows that number. Calls to fetch a finished job and write a fix file do not count toward the call quota.
+Each accepted start counts as one call: review, validation, or combine, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. A saved report counts as one call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, `remainingCalls` in the 202 says how many calls are still available. When the server refuses the start, the status is 402, and the response has `remainingCalls` when the server knows that number. Calls to fetch a finished job and write a fix file do not count toward the call quota.
 
-**Note:** There is no list call — make sure to keep the `jobId` from the 202. Without it the job cannot be looked up. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
+**Note:** `GET /jobs` lists the jobs this API key started, newest first. `[]` when there are none. Keep the `jobId` from the 202. The list is how to find that id again. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
 
 ## Sequences
 
 Typical order: Review → Validation → Combined. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-combined`. Pieces: `review`, `validation`, `combined`, `run-again`, `check-and-fetch`. Combined is intended for a Review and a Validation of the same use cases. The host does not check. Unrelated jobs will combine to create a misleading report.
+
+If the customer wants to save calls, they can skip the Combined step. Often the Validation report and fix file are enough. A finding that appeared only in the Review is occasionally missing from the Validation outputs.
 
 ## What comes back
 
@@ -44,7 +48,7 @@ The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 404 `{ "error": "not 
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 404 `{ "error": "no path file yet" }` while it is not written. 404 `{ "error": "not found" }` unknown `jobId`.
 
-Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is `"fix file was not saved"` when the report exists but `fix.md` was never saved.
+Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is `"fix file was not saved"` when the report exists but `fix.md` was never saved.
 
 `scoreStatus` is present only when the score in the report did not match a count based on the findings. It returns a string that names both numbers, e.g. `The report says score: 70, but counting the findings adds up to 76.` `score` and `report.md` then uses that second number (76 in that string).
 
