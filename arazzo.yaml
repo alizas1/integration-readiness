@@ -276,6 +276,7 @@ workflows:
     summary: A real build of the use cases.
     description: |
       Writes `report.md`, `fix.md`, and `path.md`.
+      Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
       `POST /validation` with `priorReport.jobId` of a Review that has `report.md`.
       To run a Validation again, that id is the previous Validation job.
     inputs:

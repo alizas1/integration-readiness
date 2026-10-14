@@ -34,6 +34,8 @@ Each accepted start counts as one call: review, validation, or combine, includin
 
 ## Sequences
 
+Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
+
 Typical order: Review → Validation → Combined. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-combined`. Pieces: `review`, `validation`, `combined`, `run-again`, `check-and-fetch`. Combined is intended for a Review and a Validation of the same use cases. The host does not check. Unrelated jobs will combine to create a misleading report.
 
 If the customer wants to save calls, they can skip the Combined step. Often the Validation report and fix file are enough. A finding that appeared only in the Review is occasionally missing from the Validation outputs.
