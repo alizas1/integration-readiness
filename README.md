@@ -1,14 +1,17 @@
 # TrailCheck
 
-Written **2026-09-24**. Updated **2026-10-11**.
+Last updated **2026-10-11**.
 
-Public contract for the TrailCheck API. Someone pays at https://trailcheck.dev/, then an agent calls this API with that API key and their AI model key.
+Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.dev/ and get an API key, then call this API with that API key and your AI model key. A full review includes 3 calls and takes an average of 10 minutes.
 
-Read [SKILL.md](./SKILL.md) before calling. This page is not the call instructions. The address, the headers, and the errors are there.
+Process:
+1. Review - reads your resources, discovers use cases and gaps.
+2. Validation - spins up an agent that runs a cold build to complete the use cases, validates and discovers gaps.
+3. Combine - combines the information gathered in the steps above into a report and fix file.
 
-- [SKILL.md](./SKILL.md) — how an agent calls
-- [openapi.yaml](./openapi.yaml) — the contract
-- [arazzo.yaml](./arazzo.yaml) — step order and job id handoffs
-- [Rendered reference](https://alizas1.github.io/integration-readiness/) — that same contract in the browser. It does not show this page.
+For agents: Read [SKILL.md](./SKILL.md) before calling. 
 
-A first run starts a review. Then it starts the cold build, the Validation call, from that review's job id. Save the job id. There is no list of past runs. Send the public docs, spec, and samples. [SKILL.md](./SKILL.md) says how to send a file that is not already a public page.
+- [SKILL.md](./SKILL.md) — how an agent calls.
+- [openapi.yaml](./openapi.yaml) — the contract.
+- [Rendered reference](https://alizas1.github.io/integration-readiness/) — that same contract in the browser. 
+- [arazzo.yaml](./arazzo.yaml) — step order and job id handoffs.
