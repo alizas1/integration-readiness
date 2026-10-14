@@ -5,6 +5,7 @@ info:
   description: |
     TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.
     The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases, then combine: combines the findings from the earlier steps into one report.
+    Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
     A failure on one call does not affect the outputs from earlier calls.
     
     This file is the machine-readable contract for caller methods
@@ -126,7 +127,9 @@ paths:
     post:
       tags: [Starts]
       summary: Start a Validation
-      description: Needs a Review job (or a previous Validation to run again) that has `report.md`.
+      description: |
+        Needs a Review job (or a previous Validation to run again) that has `report.md`.
+        Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
       operationId: postValidation
       security:
         - AccessApiKey: []
