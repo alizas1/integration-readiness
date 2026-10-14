@@ -99,7 +99,7 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
    The server returns `202` with `{ "jobId": "...", "remainingCalls": 14 }`. `remainingCalls` is how many calls your plan has left after this start.
    If it prints an error message instead of an ID, check the message. For example, `unauthorized` means the TrailCheck API key is wrong or missing. A `402` means your plan has no calls left, its paid-through date has passed, or the key has no plan attached.
 
-**Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs`. It lists every job your API key started, newest first.
+**Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs` with your `Authorization` header. It lists every job your API key started, newest first.
 
 **Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`.
 
@@ -171,7 +171,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    # Code in next step goes here...
    ```
 
-   **Optional:** The Review has its own report and fix file. You'll get them in Step 5, combined with the Validation's, so you don't need them now. If you want to see them, for example if a later step fails, send a `GET` request to `/jobs/<jobId>/report` or `/jobs/<jobId>/fix`.
+   **Optional:** The Review has its own report and fix file. You'll get them in Step 5, combined with the Validation's, so you don't need them now. If you want to see them, for example if a later step fails, send a `GET` request to `/jobs/<jobId>/report` or `/jobs/<jobId>/fix` with your `Authorization` header.
 
 ## Step 4: Start a Validation
 
@@ -225,7 +225,7 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
    # Code in next step goes here...
    ```
 
-   **Optional:** Like the Review, the Validation has its own report and fix file, plus a path file: the route the agent took through your API. To get them, send a `GET` request to `/jobs/<jobId>/report`, `/jobs/<jobId>/fix`, or `/jobs/<jobId>/path`.
+   **Optional:** Like the Review, the Validation has its own report and fix file, plus a path file: the route the agent took through your API. To get them, send a `GET` request to `/jobs/<jobId>/report`, `/jobs/<jobId>/fix`, or `/jobs/<jobId>/path` with your `Authorization` header.
 
 ## Step 5: Combine the Review and the Validation
 
@@ -286,7 +286,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has `"fixFileStatus": "fix file was not saved"`, the report exists but the fix file doesn't. To write the fix file, send `POST /jobs/<jobId>/fix` with the same `aiModel` body and model key. This doesn't use a call from your plan.
+**Note:** If the job info has `"fixFileStatus": "fix file was not saved"`, the report exists but the fix file doesn't. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan.
 
 ## Step 6: Apply the fix file
 
