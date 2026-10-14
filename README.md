@@ -1,6 +1,6 @@
 # TrailCheck
 
-Last updated **2026-10-11**.
+Last updated **2026-10-14**.
 
 Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.dev/ and get an API key, then call this API with that API key and your AI model key. A full review includes 3 calls and takes an average of 10 minutes.
 
@@ -12,7 +12,7 @@ Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.de
 
 Process:
 1. Review - reads your resources, discovers use cases and gaps.
-2. Validation - spins up an agent that runs a cold build to complete the use cases, validates and discovers gaps. 
+2. Validation - spins up an agent that runs a cold build to complete the use cases, validates and discovers gaps.
    **Note:** At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
 3. Combine - combines the information gathered in the steps above into a report and fix file.
 
