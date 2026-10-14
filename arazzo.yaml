@@ -1,9 +1,9 @@
 arazzo: 1.0.1
 info:
   title: TrailCheck API
-  version: "2026-09-16"
+  version: "2026-10-14"
   description: |
-    Written **2026-09-16**.
+    Written **2026-09-16**. Updated **2026-10-14**.
 
     Machine-readable flows for the TrailCheck API. Step order and handoffs
     (`jobId` from the 202 into later GETs and `priorReport`).
@@ -30,7 +30,7 @@ workflows:
     summary: A through read-through of the published docs and spec based on use cases.
     description: |
       Writes `report.md` and `fix.md`. `POST /review` with `resources`.
-      Keep `jobId` from the 202. There is no list call.
+      Keep `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     inputs:
       type: object
       required: [resources]
@@ -75,7 +75,7 @@ workflows:
           GET /jobs/{jobId}/report. 200 the report.
           404 `{ "error": "no report yet" }` while In progress.
           404 `{ "error": "not found" }` unknown jobId.
-          There is no rate limit. Wait `[how often]` between GETs.
+          There is no rate limit. Wait once a minute between GETs.
         operationId: getJobReport
         parameters:
           - name: jobId

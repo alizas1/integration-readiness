@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
   title: TrailCheck API
-  version: "2026-10-07"
+  version: "2026-10-14"
   description: |
     TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.
     The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases, then combine: combines the findings from the earlier steps into one report.
     A failure on one call does not affect the outputs from earlier calls.
     
     This file is the machine-readable contract for caller methods
-    (health, three starts, GET job info and files, POST to write the fix file on a job that already has a report, and the optional POST to `callbackUrl`).
-    There is no list call. Keep the `jobId` from the 202. Without it the job cannot be looked up.
+    (health, three starts, GET the job list, GET job info and files, POST to write the fix file on a job that already has a report, and the optional POST to `callbackUrl`).
+    Keep the `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     Jobs and their files stay on the host for 3 months.
 
     Other resources:
@@ -98,6 +98,8 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "401":
           $ref: "#/components/responses/ErrorJson"
+        "402":
+          $ref: "#/components/responses/CallsRefused"
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -151,6 +153,8 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "401":
           $ref: "#/components/responses/ErrorJson"
+        "402":
+          $ref: "#/components/responses/CallsRefused"
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -200,6 +204,8 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "401":
           $ref: "#/components/responses/ErrorJson"
+        "402":
+          $ref: "#/components/responses/CallsRefused"
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -218,10 +224,34 @@ paths:
                 "2XX":
                   description: Received. Empty body is fine.
 
+  /jobs:
+    get:
+      tags: [Jobs]
+      summary: List jobs
+      description: |
+        Jobs this API key started, newest startedAt first.
+        Each item is the same object as get job info. The report, fix file, path file, and call list are not included.
+        No filters and no paging. An empty array means this API key has no jobs.
+      operationId: listJobs
+      security:
+        - AccessApiKey: []
+      responses:
+        "200":
+          description: Jobs this API key started. Empty array when there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobInfo"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+
   /jobs/{jobId}/info:
     get:
       tags: [Jobs]
       summary: Job info
+      description: Poll once a minute until status is Completed or Failed. There is no rate limit.
       operationId: getJobInfo
       security:
         - AccessApiKey: []
@@ -434,6 +464,25 @@ components:
             started:
               value:
                 jobId: "00000000-0000-0000-0000-000000000000"
+                remainingCalls: 14
+    CallsRefused:
+      description: The API key has no calls left, the paid-through date has passed, or the balance is missing
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+          examples:
+            usedUp:
+              value:
+                error: no calls left
+                remainingCalls: 0
+            paidThrough:
+              value:
+                error: the paid-through date has passed
+                remainingCalls: 4
+            missing:
+              value:
+                error: no balance
     ErrorJson:
       description: Error
       content:
@@ -464,6 +513,9 @@ components:
         error:
           type: string
           description: Human-readable string. No `code` or `details` field.
+        remainingCalls:
+          type: integer
+          description: Calls remaining. Present on a 402 when the server knows the number.
       examples:
         - error: unauthorized
         - error: at least one resource or prior report is required
@@ -477,6 +529,10 @@ components:
         - error: no report yet
         - error: no path file yet
         - error: job is in progress
+        - error: no calls left
+          remainingCalls: 0
+        - error: the paid-through date has passed
+        - error: no balance
     Accepted:
       type: object
       required: [jobId]
@@ -485,6 +541,9 @@ components:
         jobId:
           type: string
           format: uuid
+        remainingCalls:
+          type: integer
+          description: Calls remaining after this start. API key starts only.
     AiModel:
       type: object
       additionalProperties: false
@@ -624,6 +683,47 @@ components:
           type: string
           enum: ["fix file was not saved"]
           description: Report exists and fix.md does not.
+        primaryName:
+          type: string
+          description: Model name for this job. The API key and the AI model key are not returned.
+        priorReportJobIds:
+          type: array
+          items:
+            type: string
+          description: Earlier job ids this run started from. Omitted when this job did not start from one.
+        useCaseRecords:
+          type: array
+          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report. id is an empty string.
+          items:
+            type: object
+            required: [id, title, goal, calls, provided, findingNumbers, score]
+            properties:
+              id:
+                type: string
+              title:
+                type: string
+              goal:
+                type: string
+              calls:
+                type: string
+              note:
+                type: string
+              provided:
+                type: boolean
+                description: True when this title matches a use case they named on the start, after lowercasing and collapsing spaces.
+              findingNumbers:
+                type: array
+                items:
+                  type: number
+              score:
+                type: number
+              completionStatus:
+                type: string
+                enum: [Completed, Partial, Not completed]
+                description: Present when the report gives one.
+              outcome:
+                type: string
+                description: Present when the report gives one.
     CallbackBody:
       type: object
       required: [jobId, type, status, reportMarkdown, fixMarkdown]
