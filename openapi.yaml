@@ -339,7 +339,7 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` `fix file was not saved` is the end. GET does not write the file."
+          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` present is the end. GET does not write the file."
           content:
             application/json:
               schema:
@@ -684,8 +684,10 @@ components:
           type: string
         fixFileStatus:
           type: string
-          enum: ["fix file was not saved"]
-          description: Report exists and fix.md does not.
+          description: >-
+            Report exists and fix.md does not. Says why. Starts with `fix file was not saved`
+            (no file, or a refused one) or `fix file failed:` (the fix file step failed, for
+            example `fix file failed: request timed out`). The job is still Completed.
         primaryName:
           type: string
           description: Model name for this job. The API key and the AI model key are not returned.

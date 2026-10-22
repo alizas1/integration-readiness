@@ -2,7 +2,7 @@
 
 Last updated **2026-10-14**.
 
-Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.dev/ and get an API key, then call this API with that API key and your AI model key. A full review includes 3 calls and takes an average of 10 minutes.
+Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.dev/ and get an API key, then call this API with that API key and your AI model key. A full review includes 3 calls. A review takes between 5-20 minutes. A validation build takes longer.
 
 - [SKILL.md](./SKILL.md): how an agent calls.
 - [openapi.yaml](./openapi.yaml): the contract.

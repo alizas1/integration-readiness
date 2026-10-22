@@ -13,7 +13,7 @@ You'll complete the following steps:
 5. [Combine the Review and the Validation](#step-5-combine-the-review-and-the-validation)
 6. [Apply the fix file](#step-6-apply-the-fix-file)
 
-A full check uses 3 calls from your plan and takes about 10 minutes on average (steps 2-5).
+A full check uses 3 calls from your plan (steps 2-5). A review takes between 5-20 minutes. A validation build takes longer.
 
 TrailCheck itself is a plain HTTPS and JSON API, so you can call it from any language or HTTP client.
 
@@ -116,7 +116,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `finishedAt` | `Completed` or `Failed` | When the job ended. |
    | `score`, `summary` | `Completed` | The report's score and a short summary. |
    | `failureDetails` | `Failed` | Why the job failed. |
-   | `fixFileStatus` | The report exists but the fix file doesn't | `fix file was not saved`. See the note in Step 5. |
+   | `fixFileStatus` | The report exists but the fix file doesn't | Why: `fix file was not saved…` or `fix file failed: …`. See the note in Step 5. |
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
 
    Send this header:
@@ -286,7 +286,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has `"fixFileStatus": "fix file was not saved"`, the report exists but the fix file doesn't. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan.
+**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan.
 
 ## Step 6: Apply the fix file
 

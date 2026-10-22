@@ -46,11 +46,11 @@ The server POSTs to `callbackUrl` (when provided) when there is a report. One tr
 
 The report (`GET /jobs/<Job ID>/report`): 200 the report. 404 `{ "error": "no report yet" }` while `"In progress"`. 404 `{ "error": "not found" }` unknown `jobId`.
 
-The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 404 `{ "error": "not found" }` — unknown `jobId`, or no fix file yet. Wait while `"In progress"`. Stop when `fixFileStatus` is `"fix file was not saved"`. GET info first when those 404s need telling apart.
+The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 404 `{ "error": "not found" }` — unknown `jobId`, or no fix file yet. Wait while `"In progress"`. Stop when `fixFileStatus` is there: it says why there is no fix file (`fix file was not saved…` or `fix file failed: …`). The report is saved and the job is `"Completed"`. GET info first when those 404s need telling apart.
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 404 `{ "error": "no path file yet" }` while it is not written. 404 `{ "error": "not found" }` unknown `jobId`.
 
-Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is `"fix file was not saved"` when the report exists but `fix.md` was never saved.
+Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is there when the report exists but no fix file was saved, and says why: `fix file was not saved…`, or `fix file failed: …` when the fix file step itself failed (for example, a timeout). The job is still `"Completed"`: the report is saved and the call is used. Ask for the fix file again to get one.
 
 `scoreStatus` is present only when the score in the report did not match a count based on the findings. It returns a string that names both numbers, e.g. `The report says score: 70, but counting the findings adds up to 76.` `score` and `report.md` then uses that second number (76 in that string).
 
