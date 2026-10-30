@@ -24,6 +24,7 @@ info:
     Provide your own AI model key.
 
     Supported AI model keys: Anthropic, OpenAI, DeepSeek, xAI, Mistral, Groq, and Google. 
+    Tested with Anthropic keys. OpenAI, Groq, DeepSeek, xAI, Mistral, and Google keys are accepted but untested, and a long report or fix file may fail with them.
     A ChatGPT login is not a key. A Cursor key cannot run this loop.
     If you omit `aiModel.company` the host guesses from the key.
 

@@ -20,7 +20,7 @@ Before the run starts, offer to make a sound when the process is complete. Make 
 
 ## Authenticate
 
-`Authorization: Bearer` plus the API key, on every start and every GET. `aiModel` on every start body (`primaryName` required). AI model key in `aiModel.key` or header `x-model-key`. Optional: `aiModel.cheapName`, `aiModel.company`. Omit `company` → the host guesses from the key. Names it accepts: `anthropic` / `claude`, `openai` / `chatgpt` / `gpt`, `deepseek`, `xai` / `grok`, `mistral`, `groq`, `google` / `gemini`. A ChatGPT login is not a key. A Cursor key cannot run this loop. An unknown company name → `{ "error": "could not tell which company this key is for" }` — send `aiModel.company`.
+`Authorization: Bearer` plus the API key, on every start and every GET. `aiModel` on every start body (`primaryName` required). AI model key in `aiModel.key` or header `x-model-key`. Optional: `aiModel.cheapName`, `aiModel.company`. Omit `company` → the host guesses from the key. Names it accepts: `anthropic` / `claude`, `openai` / `chatgpt` / `gpt`, `deepseek`, `xai` / `grok`, `mistral`, `groq`, `google` / `gemini`. Tested with Anthropic keys. OpenAI, Groq, DeepSeek, xAI, Mistral, and Google keys are accepted but untested, and a long report or fix file may fail with them. A ChatGPT login is not a key. A Cursor key cannot run this loop. An unknown company name → `{ "error": "could not tell which company this key is for" }` — send `aiModel.company`.
 
 Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI model key → `{ "error": "an ai model key is required" }` (401). Missing `primaryName` → `{ "error": "primaryName is required" }` (400).
 
