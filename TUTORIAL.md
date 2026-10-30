@@ -13,7 +13,7 @@ You'll complete the following steps:
 5. [Combine the Review and the Validation](#step-5-combine-the-review-and-the-validation)
 6. [Apply the fix file](#step-6-apply-the-fix-file)
 
-A full check uses 3 calls from your plan (steps 2-5). A review takes between 5-20 minutes. A validation build takes longer.
+A full check uses 3 calls from your plan (steps 2-5). A review takes between 3-20 minutes. A validation build takes longer.
 
 TrailCheck itself is a plain HTTPS and JSON API, so you can call it from any language or HTTP client.
 
