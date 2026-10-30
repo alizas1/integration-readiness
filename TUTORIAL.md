@@ -90,7 +90,7 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
        "title": "Petstore API",
        "resources": ["https://petstore3.swagger.io/api/v3/openapi.json"],
        "useCases": { "specified": ["add a pet", "find pets by status"] },
-       "aiModel": { "primaryName": "claude-sonnet-4-5" }
+       "aiModel": { "primaryName": "claude-sonnet-5-5" }
      }' | jq -r '.jobId // .error')
    echo "Review job: $REVIEW_JOB_ID"
    # Code in next step goes here...
@@ -211,7 +211,7 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
      -H "Content-Type: application/json" \
      -d '{
        "priorReport": { "jobId": "'"$REVIEW_JOB_ID"'" },
-       "aiModel": { "primaryName": "claude-sonnet-4-5" }
+       "aiModel": { "primaryName": "claude-sonnet-5-5" }
      }' | jq -r '.jobId // .error')
    echo "Validation job: $VALIDATION_JOB_ID"
    # Code in next step goes here...
@@ -261,7 +261,7 @@ In this step, you'll combine both jobs into one report and one fix file.
      -H "Content-Type: application/json" \
      -d '{
        "priorReport": { "jobId": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
-       "aiModel": { "primaryName": "claude-sonnet-4-5" }
+       "aiModel": { "primaryName": "claude-sonnet-5-5" }
      }' | jq -r '.jobId // .error')
    echo "Combined job: $COMBINED_JOB_ID"
    # Code in next step goes here...
@@ -286,15 +286,15 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID, so wait for it and get the fix file the same way:
+**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID. The job stays Completed while the fix file is written, so wait until `fixFileStatus` is no longer `writing the fix file`, then get the fix file:
 
 ```bash
 curl -s -X POST "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" \
   -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
   -H "x-model-key: $MODEL_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "aiModel": { "primaryName": "claude-sonnet-4-5" } }'
-wait_for "$COMBINED_JOB_ID"
+  -d '{ "aiModel": { "primaryName": "claude-sonnet-5-5" } }'
+while [ "$(curl -s "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/info" -H "Authorization: Bearer $TRAILCHECK_API_KEY" | jq -r '.fixFileStatus // ""')" = "writing the fix file" ]; do sleep 60; done
 curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" -H "Authorization: Bearer $TRAILCHECK_API_KEY" -o combined-fix.md
 ```
 
@@ -358,7 +358,7 @@ REVIEW_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway
     "title": "Petstore API",
     "resources": ["https://petstore3.swagger.io/api/v3/openapi.json"],
     "useCases": { "specified": ["add a pet", "find pets by status"] },
-    "aiModel": { "primaryName": "claude-sonnet-4-5" }
+    "aiModel": { "primaryName": "claude-sonnet-5-5" }
   }' | jq -r '.jobId // .error')
 echo "Review job: $REVIEW_JOB_ID"
 
@@ -371,7 +371,7 @@ VALIDATION_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.rai
   -H "Content-Type: application/json" \
   -d '{
     "priorReport": { "jobId": "'"$REVIEW_JOB_ID"'" },
-    "aiModel": { "primaryName": "claude-sonnet-4-5" }
+    "aiModel": { "primaryName": "claude-sonnet-5-5" }
   }' | jq -r '.jobId // .error')
 echo "Validation job: $VALIDATION_JOB_ID"
 
@@ -384,7 +384,7 @@ COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railw
   -H "Content-Type: application/json" \
   -d '{
     "priorReport": { "jobId": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
-    "aiModel": { "primaryName": "claude-sonnet-4-5" }
+    "aiModel": { "primaryName": "claude-sonnet-5-5" }
   }' | jq -r '.jobId // .error')
 echo "Combined job: $COMBINED_JOB_ID"
 
