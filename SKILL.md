@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-10-14**.
+Written **2026-09-16**. Updated **2026-10-30**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -50,7 +50,7 @@ The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 404 `{ "error": "not 
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 404 `{ "error": "no path file yet" }` while it is not written. 404 `{ "error": "not found" }` unknown `jobId`.
 
-Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is there when the report exists but no fix file was saved, and says why: `fix file was not saved…`, or `fix file failed: …` when the fix file step itself failed (for example, a timeout). The job is still `"Completed"`: the report is saved and the call is used. Ask for the fix file again to get one.
+Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score` and `summary` when parsed. `"Failed"`: `failureDetails` (a string) and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `fixFileStatus` is there when the report exists but no fix file was saved, and says why: `fix file was not saved…`, or `fix file failed: …` when the fix file step itself failed (for example, a timeout). The job is still `"Completed"`: the report is saved and the call is used. To get one, `POST /jobs/<Job ID>/fix` with the same authentication and `aiModel` as a start. 202 `{ "jobId" }`, the same ID. Not counted. Then GET info until `"Completed"` and GET the fix file. Sequence: `generate-fix` in [`arazzo.yaml`](./arazzo.yaml).
 
 `scoreStatus` is present only when the score in the report did not match a count based on the findings. It returns a string that names both numbers, e.g. `The report says score: 70, but counting the findings adds up to 76.` `score` and `report.md` then uses that second number (76 in that string).
 

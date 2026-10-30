@@ -286,7 +286,17 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan.
+**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID, so wait for it and get the fix file the same way:
+
+```bash
+curl -s -X POST "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" \
+  -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
+  -H "x-model-key: $MODEL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "aiModel": { "primaryName": "claude-sonnet-4-5" } }'
+wait_for "$COMBINED_JOB_ID"
+curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" -H "Authorization: Bearer $TRAILCHECK_API_KEY" -o combined-fix.md
+```
 
 ## Step 6: Apply the fix file
 
