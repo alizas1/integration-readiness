@@ -689,6 +689,7 @@ components:
             Report exists and fix.md does not. Says why. Starts with `fix file was not saved`
             (no file, or a refused one) or `fix file failed:` (the fix file step failed, for
             example `fix file failed: request timed out`). The job is still Completed.
+            `fix file is incomplete: it stops before task #<n>. The report is saved. Ask for the fix file again to write the rest.` when the fix file was saved but stops partway. The file says so at the top. Asking for the fix file again goes on from where it stopped.
         primaryName:
           type: string
           description: Model name for this job. The API key and the AI model key are not returned.
