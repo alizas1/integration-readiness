@@ -9,7 +9,7 @@ info:
     A failure on one call does not affect the outputs from earlier calls.
     
     This file is the machine-readable contract for caller methods
-    (health, three starts, GET the job list, GET job info and files, POST to write the fix file on a job that already has a report, and the optional POST to `callbackUrl`).
+    (health, three starts, GET the job list, GET job info and files, Generate Fix File (POST to write the fix file on a job that already has a report), and the optional POST to `callbackUrl`).
     Keep the `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     Jobs and their files stay on the host for 3 months.
 
@@ -290,7 +290,8 @@ paths:
                     title: example API
                     startedAt: "2026-09-15T12:00:00.000Z"
                     finishedAt: "2026-09-15T12:05:00.000Z"
-                    failureDetails: Request timed out.
+                    failureDetails: The report was cut off at the 32,000-token reply limit before it was handed in. Run it again with fewer use cases or fewer resources. If it happens again, contact us with the job ID. You weren't charged a call for this run.
+                    failureCode: reply_limit
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
@@ -340,14 +341,14 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` present is the end. GET does not write the file."
+          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` present and not `writing the fix file` is the end. GET does not write the file."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
     post:
       tags: [Jobs]
-      summary: Write the fix file on this job
+      summary: Generate Fix File
       description: |
         The job must already have `report.md`. Writes `fix.md` on this same job.
         202 `{ "jobId" }` is that same ID. The job's status does not change: while the fix file is written, `fixFileStatus` is `writing the fix file`. GET info until it is no longer that, then GET the fix file.
@@ -357,7 +358,7 @@ paths:
         No report → `{ "error": "no report yet" }` (404).
         Customer body needs `aiModel` (`primaryName` required) the same as a start.
         `.md` on the path still works.
-      operationId: postJobFix
+      operationId: generateFixFile
       security:
         - AccessApiKey: []
       parameters:
@@ -675,7 +676,14 @@ components:
           description: When status is Completed or Failed.
         failureDetails:
           type: string
-          description: When status is Failed. A string, not an object.
+          description: >-
+            When status is Failed. A string: what happened, then what to do next. AI-side errors say
+            whose key and end with the company's request ID. A start with no report ends with
+            `You weren't charged a call for this run.`
+        failureCode:
+          type: string
+          description: When status is Failed. The reason as a code.
+          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, use_cases_unreadable, internal_error]
         score:
           type: number
           description: When parsed. If scoreStatus is present, this is the second number in that string.
@@ -687,11 +695,16 @@ components:
         fixFileStatus:
           type: string
           description: >-
-            Report exists and fix.md does not. Says why. Starts with `fix file was not saved`
-            (no file, or a refused one) or `fix file failed:` (the fix file step failed, for
-            example `fix file failed: request timed out`). The job is still Completed.
-            `writing the fix file` while a fix file asked for again is being written.
-            `fix file is incomplete: it stops before task #<n>. The report is saved. Ask for the fix file again to write the rest.` when the fix file was saved but stops partway. The file says so at the top. Asking for the fix file again goes on from where it stopped.
+            Present when the report exists and there is no complete fix file. Says why, then what to do:
+            `writing the fix file` while it is being written; the AI didn't hand one in; a refused line
+            (`fix file was not saved: line …`); a failure (`fix file failed: …`, the same causes as a job
+            failure); or `fix file is incomplete: it stops before task #<n>. The report is saved. Call
+            Generate Fix File again to write the rest.` (the file says so at the top). The job's status
+            does not change. Calling Generate Fix File again goes on from where an incomplete one stopped.
+        fixFileCode:
+          type: string
+          description: With fixFileStatus. The reason as a code.
+          enum: [writing, incomplete, refused, not_handed_in, reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
         primaryName:
           type: string
           description: Model name for this job. The API key and the AI model key are not returned.
@@ -756,6 +769,15 @@ components:
           description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string.
         failureDetails:
           type: string
+        failureCode:
+          type: string
+          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, use_cases_unreadable, internal_error]
+        fixFileStatus:
+          type: string
+          description: When there is no complete fix file. Same as on job info.
+        fixFileCode:
+          type: string
+          enum: [writing, incomplete, refused, not_handed_in, reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
         reportMarkdown:
           type: string
         fixMarkdown:

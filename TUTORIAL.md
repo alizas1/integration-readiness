@@ -115,8 +115,8 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `id`, `type`, `title`, `startedAt` | Always | The job ID, `Review`, `Validation`, or `Combined`, the title you sent, and when it started. |
    | `finishedAt` | `Completed` or `Failed` | When the job ended. |
    | `score`, `summary` | `Completed` | The report's score and a short summary. |
-   | `failureDetails` | `Failed` | Why the job failed. |
-   | `fixFileStatus` | The report exists but the fix file doesn't | Why: `fix file was not saved…` or `fix file failed: …`. See the note in Step 5. |
+   | `failureDetails`, `failureCode` | `Failed` | Why the job failed and what to do, and the reason as a code. |
+   | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See the note in Step 5. |
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
 
    Send this header:
@@ -286,7 +286,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To write the fix file, send `POST /jobs/<jobId>/fix` with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID. The job stays Completed while the fix file is written, so wait until `fixFileStatus` is no longer `writing the fix file`, then get the fix file:
+**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To generate the fix file, call Generate Fix File (`POST /jobs/<jobId>/fix`) with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID. The job stays Completed while the fix file is written, so wait until `fixFileStatus` is no longer `writing the fix file`, then get the fix file:
 
 ```bash
 curl -s -X POST "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" \
