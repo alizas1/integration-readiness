@@ -95,7 +95,7 @@ workflows:
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
           404 `{ "error": "not found" }` is unknown jobId or no fix file yet.
-          Wait while In progress. Stop when info `fixFileStatus` is there: it says why there is no fix file (`fix file was not saved…` or `fix file failed: …`). The report is saved and the job is Completed.
+          Wait while In progress. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
         operationId: getJobFix
         parameters:
           - name: jobId
@@ -150,7 +150,7 @@ workflows:
           - condition: $statusCode == 200
 
   - workflowId: generate-fix
-    summary: Write the fix file on a job that already has a report.
+    summary: Generate Fix File, on a job that already has a report.
     description: |
       POST /jobs/{jobId}/fix. Same job. GET does not write the file.
       If the job is In progress, this call is refused. So is a second request while the fix file is being written.
@@ -167,7 +167,7 @@ workflows:
     steps:
       - stepId: start
         description: POST /jobs/{jobId}/fix. Expected 202 `{ "jobId" }` with that same ID.
-        operationId: postJobFix
+        operationId: generateFixFile
         parameters:
           - name: jobId
             in: path
@@ -180,7 +180,7 @@ workflows:
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
           404 `{ "error": "not found" }` while it is not written.
-          Wait while info `fixFileStatus` is `writing the fix file`. Stop when info `fixFileStatus` is there: it says why there is no fix file (`fix file was not saved…` or `fix file failed: …`). The report is saved and the job is Completed.
+          Wait while info `fixFileStatus` is `writing the fix file`. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
         operationId: getJobFix
         parameters:
           - name: jobId
