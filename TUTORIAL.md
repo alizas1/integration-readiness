@@ -82,16 +82,35 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
    | `Content-Type` | Yes | `application/json` |
 
    ```bash
-   REVIEW_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
+   export REVIEW_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
      -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
      -H "x-model-key: $MODEL_KEY" \
      -H "Content-Type: application/json" \
      -d '{
        "title": "Petstore API",
        "resources": ["https://petstore3.swagger.io/api/v3/openapi.json"],
-       "useCases": { "specified": ["add a pet", "find pets by status"] },
        "aiModel": { "primaryName": "claude-sonnet-5-5" }
      }' | jq -r '.jobId // .error')
+   echo "Review job: $REVIEW_JOB_ID"
+   # Code in next step goes here...
+   ```
+
+   If your spec isn't online, send its text instead. This example reads `openapi.yaml` from the folder you run it in:
+
+   ```bash
+   export REVIEW_JOB_ID=$(jq -n \
+     --rawfile spec openapi.yaml \
+     '{
+       title: "Petstore API",
+       resources: [$spec],
+       aiModel: { primaryName: "claude-sonnet-5-5" }
+     }' \
+   | curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
+     -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
+     -H "x-model-key: $MODEL_KEY" \
+     -H "Content-Type: application/json" \
+     -d @- \
+   | jq -r '.jobId // .error')
    echo "Review job: $REVIEW_JOB_ID"
    # Code in next step goes here...
    ```
@@ -205,7 +224,7 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
 
    ```bash
    # ...Code from previous step
-   VALIDATION_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/validation" \
+   export VALIDATION_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/validation" \
      -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
      -H "x-model-key: $MODEL_KEY" \
      -H "Content-Type: application/json" \
@@ -255,7 +274,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
    ```bash
    # ...Code from previous step
-   COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/combine" \
+   export COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/combine" \
      -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
      -H "x-model-key: $MODEL_KEY" \
      -H "Content-Type: application/json" \
@@ -350,14 +369,13 @@ wait_for() {
 }
 
 # Review
-REVIEW_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
+export REVIEW_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
   -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
   -H "x-model-key: $MODEL_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Petstore API",
     "resources": ["https://petstore3.swagger.io/api/v3/openapi.json"],
-    "useCases": { "specified": ["add a pet", "find pets by status"] },
     "aiModel": { "primaryName": "claude-sonnet-5-5" }
   }' | jq -r '.jobId // .error')
 echo "Review job: $REVIEW_JOB_ID"
@@ -365,7 +383,7 @@ echo "Review job: $REVIEW_JOB_ID"
 wait_for "$REVIEW_JOB_ID"
 
 # Validation
-VALIDATION_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/validation" \
+export VALIDATION_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/validation" \
   -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
   -H "x-model-key: $MODEL_KEY" \
   -H "Content-Type: application/json" \
@@ -378,7 +396,7 @@ echo "Validation job: $VALIDATION_JOB_ID"
 wait_for "$VALIDATION_JOB_ID"
 
 # Combined
-COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/combine" \
+export COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.up.railway.app/combine" \
   -H "Authorization: Bearer $TRAILCHECK_API_KEY" \
   -H "x-model-key: $MODEL_KEY" \
   -H "Content-Type: application/json" \
