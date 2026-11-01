@@ -172,12 +172,12 @@ In this step, you'll check the Review's status and wait for it to finish.
    wait_for() {
      while true; do
        info=$(curl -s "https://agent-server-production-a722.up.railway.app/jobs/$1/info" -H "Authorization: Bearer $TRAILCHECK_API_KEY")
-       status=$(echo "$info" | jq -r .status)
-       [ "$status" != "In progress" ] && break
+       job_status=$(echo "$info" | jq -r .status)
+       [ "$job_status" != "In progress" ] && break
        sleep 60
      done
      echo "$info" | jq .
-     [ "$status" = "Completed" ]
+     [ "$job_status" = "Completed" ]
    }
    # Code in next step goes here...
    ```
@@ -360,12 +360,12 @@ curl -s "https://agent-server-production-a722.up.railway.app/health"
 wait_for() {
   while true; do
     info=$(curl -s "https://agent-server-production-a722.up.railway.app/jobs/$1/info" -H "Authorization: Bearer $TRAILCHECK_API_KEY")
-    status=$(echo "$info" | jq -r .status)
-    [ "$status" != "In progress" ] && break
+    job_status=$(echo "$info" | jq -r .status)
+    [ "$job_status" != "In progress" ] && break
     sleep 60
   done
   echo "$info" | jq .
-  [ "$status" = "Completed" ]
+  [ "$job_status" = "Completed" ]
 }
 
 # Review
