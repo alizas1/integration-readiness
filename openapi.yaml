@@ -718,7 +718,7 @@ components:
           description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report. id is an empty string.
           items:
             type: object
-            required: [id, title, goal, calls, provided, findingNumbers, score]
+            required: [id, title, goal, steps, provided, findingNumbers, score]
             properties:
               id:
                 type: string
@@ -726,7 +726,7 @@ components:
                 type: string
               goal:
                 type: string
-              calls:
+              steps:
                 type: string
               note:
                 type: string
