@@ -137,6 +137,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `failureDetails`, `failureCode` | `Failed` | Why the job failed and what to do, and the reason as a code. |
    | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See the note in Step 5. |
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
+   | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
 
    Send this header:
 
