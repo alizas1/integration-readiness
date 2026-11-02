@@ -99,10 +99,10 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
 
    ```bash
    export REVIEW_JOB_ID=$(jq -n \
-     --rawfile spec openapi.yaml \
+     --rawfile SPEC openapi.yaml \
      '{
        title: "Petstore API",
-       resources: [$spec],
+       resources: [$SPEC],
        aiModel: { primaryName: "claude-sonnet-5-5" }
      }' \
    | curl -s -X POST "https://agent-server-production-a722.up.railway.app/review" \
