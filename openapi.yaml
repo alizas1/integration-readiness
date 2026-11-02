@@ -750,6 +750,9 @@ components:
       type: object
       required: [jobId, type, status, reportMarkdown, fixMarkdown]
       properties:
+        useCasesNote:
+          type: string
+          description: Present when the use cases section had text that is not in useCaseRecords. Always `The use cases section had extra text that isn't in this list. Read it in the report.`
         jobId:
           type: string
           format: uuid
