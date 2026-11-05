@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-10-31**.
+Written **2026-09-16**. Updated **2026-11-05**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -17,6 +17,18 @@ This file is how to call the host. The how-to that writes the report stays on th
 Host: `https://agent-server-production-a722.up.railway.app`
 
 Before the run starts, offer to make a sound when the process is complete. Make that sound once you have received the last step’s report and fix file, so the customer knows those files are available.
+
+## Before you start a Review
+
+Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next.
+
+1. What should the review cover? For example your API spec, llms.txt and/or docs site. Provide links or files, or I can look in this repo to find them.
+
+2. What kind of review should I run? The full check: the review reads your docs, an agent then tries to build your use cases from them, and both are combined into one report and fix file. Uses 3 calls. Or something else?
+
+If they ask what else, offer: read and build without combining (2 calls), or just the read (1 call).
+
+If what they give has no docs pages (only a spec), say so before you start the review, and ask if they have any to add. Tell them the report will count it as a finding.
 
 ## Authenticate
 
