@@ -327,21 +327,20 @@ In this step, you'll hand the fix file to your coding agent. `combined-fix.md` i
    - **If an agent ran the calls for you:** It already has the fix file. Go to the next step and stay in the same session.
    - **If you ran the calls yourself:** Copy `combined-fix.md` into the repo where your docs and spec live.
 
-2. Choose an optional run mode. The fix file supports these modes, and you choose one by adding its phrase to your prompt:
+2. Choose a run mode. If you don't name one, the agent asks which one you want.
 
-   | Run mode | Add to your prompt | What the agent does |
+   | Run mode | Paste into your agent | What the agent does |
    | --- | --- | --- |
-   | Default | Nothing | Checks each issue against your repo, then asks you before it changes anything. |
-   | Handle it yourself | `handle it yourself` | Checks every issue, fixes the ones it confirms, and opens one PR without asking you anything. It doesn't change API or service behavior. For those issues, it adds notes to the PR instead. |
-   | Docs only | `docs only` | Fixes only docs, sample, and spec issues, and opens one docs PR. First it asks you once for your docs guidelines and how to handle issues that need a developer: document around them, or collect them in a separate notes file. If you skip that question, it ignores those issues. |
-   | Prove everything | `prove everything` | Goes through the issues one at a time in the chat, and waits for your yes before each change. It offers to open a PR once it has gone through every issue. |
+   | Handle it yourself | `Run the fix file. Handle it yourself.` | Fixes the issues it can confirm and opens a PR without asking you anything. Anything unclear goes in a notes file in the PR with the question that would settle it. Issues that need an engineer go in a separate engineering notes file in the PR, and a second PR has docs workarounds in case they aren't fixed. |
+   | Docs only | `Run the fix file. Docs only.` | Asks about your docs guidelines, fixes only docs, sample and spec issues, then asks you about anything unclear. Opens one docs PR. Issues that need an engineer go in a notes file in the PR. |
+   | Prove everything | `Run the fix file. Prove everything.` | Explains each issue and shows you the details to decide on before changing anything. It offers to open a PR once it has gone through every issue. |
 
    In every mode, the agent treats the fix file as leads, not facts. It checks each issue in your repo first and skips any that are already fixed.
 
 3. Ask your coding agent to apply the fixes in the run mode you chose. If you're starting a new session, start it in the repo with your docs and spec. For example, with Claude Code:
 
    ```bash
-   claude "Run combined-fix.md. Handle it yourself."
+   claude "Run the fix file. Handle it yourself."
    ```
 
 4. Review the agent's recommended changes, and make any required edits/changes. Then publish your updated docs and spec.
