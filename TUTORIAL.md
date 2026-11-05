@@ -120,7 +120,7 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
 
 **Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs` with your `Authorization` header. It lists every job your API key started, newest first.
 
-**Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`.
+**Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`. TrailCheck reads only the hosts in `resources`, and the hosts an `llms.txt` listed in `resources` links to.
 
 ## Step 3: Wait for the job
 
