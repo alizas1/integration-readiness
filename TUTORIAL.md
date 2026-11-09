@@ -68,6 +68,7 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
    | `useCases` | No | Specific tasks an integrator should be able to finish, as `{ "specified": [...] }` if you have them. Omit it and the Review finds use cases on its own. |
    | `guidelines` | No | Your API style rules as one Markdown string. The Review checks your API against them. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
+   | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `priorReport` | No | `{ "jobId": "..." }` of an earlier Review, to run that same check again. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
    | `aiModel.company` | No - but recommended| The AI model company, for example `anthropic`. Omit it and TrailCheck works it out from the key. |
@@ -133,11 +134,13 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `status` | Always | `In progress`, `Completed`, or `Failed`. |
    | `id`, `type`, `title`, `startedAt` | Always | The job ID, `Review`, `Validation`, or `Combined`, the title you sent, and when it started. |
    | `finishedAt` | `Completed` or `Failed` | When the job ended. |
-   | `score`, `summary` | `Completed` | The report's score and a short summary. |
+   | `score`, `scoreMax`, `summary` | `Completed` | The report's score, what it's out of, and a short summary. |
    | `failureDetails`, `failureCode` | `Failed` | Why the job failed and what to do, and the reason as a code. |
    | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See the note in Step 5. |
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
    | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
+   | `useCaseScoresNote` | The use cases couldn't be read | There are no `useCaseRecords`. The job is still `Completed`, and the report, score and fix file are not affected. |
+   | `notifyEmail` | You sent one on the start | The address the email went to when the job ended. |
 
    Send this header:
 
@@ -209,6 +212,7 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
    | `resources` | No | More URLs or Markdown strings. They're added to the prior job's resources. |
    | `useCases` | No | More use cases, as `{ "specified": [...] }`. They're added to the prior job's use cases. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report, fix file, and path file to when the job finishes. |
+   | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
    | `aiModel.company` | No - but recommended| The AI model company, for example `anthropic`. Omit it and TrailCheck works it out from the key. |
    | `aiModel.key` | Yes - unless sent as a header | Your AI model key, if you don't send it in the `x-model-key` header. If you send both and they differ, the server returns `400`. |
@@ -259,6 +263,7 @@ In this step, you'll combine both jobs into one report and one fix file.
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
+   | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
    | `aiModel.company` | No - but recommended| The AI model company, for example `anthropic`. Omit it and TrailCheck works it out from the key. |
    | `aiModel.key` | Yes - unless sent as a header | Your AI model key, if you don't send it in the `x-model-key` header. If you send both and they differ, the server returns `400`. |
@@ -306,7 +311,9 @@ In this step, you'll combine both jobs into one report and one fix file.
 
 **Note:** If a job fails, the jobs before it still have their files. Send the same `GET` requests with the ID of the latest job that completed. For example, if the Combined job fails, use `$VALIDATION_JOB_ID`.
 
-**Note:** If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To generate the fix file, call Generate Fix File (`POST /jobs/<jobId>/fix`) with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID. The job stays Completed while the fix file is written, so wait until `fixFileStatus` is no longer `writing the fix file`, then get the fix file:
+### Generate the fix file
+
+If the job info has a `fixFileStatus`, the report exists but the fix file doesn't. The job is still Completed. To generate the fix file, call Generate Fix File (`POST /jobs/<jobId>/fix`) with the `Authorization`, `x-model-key`, and `Content-Type` headers and an `aiModel` body with `primaryName`. This doesn't use a call from your plan. It keeps the same job ID. The job stays Completed while the fix file is written, so wait until `fixFileStatus` is no longer `writing the fix file`, then get the fix file:
 
 ```bash
 curl -s -X POST "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB_ID/fix" \
