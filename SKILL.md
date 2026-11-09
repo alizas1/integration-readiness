@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-11-05**.
+Written **2026-09-16**. Updated **2026-11-09**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -18,17 +18,23 @@ Host: `https://agent-server-production-a722.up.railway.app`
 
 Before the run starts, offer to make a sound when the process is complete. Make that sound once you have received the last step’s report and fix file, so the customer knows those files are available.
 
+## If they don't have a key yet
+
+Before anything else, ask whether they have a TrailCheck API key. If not, send them to https://trailcheck.dev/ to buy one. The app gives them the key after they pay. Then have them set it and their AI model key as described under Authenticate, and start with the questions below.
+
 ## Before you start a Review
 
 Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next.
 
-1. What should the review cover? For example your API spec, llms.txt and/or docs site. Provide links or files, or I can look in this repo to find them.
+1. What should the review cover? For example your API spec, llms.txt and/or docs site. Provide links or files. If I can open your project, I can look in it to find them.
 
 2. What kind of review should I run? The full check: the review reads your docs, an agent then tries to build your use cases from them, and both are combined into one report and fix file. Uses 3 calls. Or something else?
 
 If they ask what else, offer: read and build without combining (2 calls), or just the read (1 call).
 
 If what they give has no docs pages (only a spec), say so before you start the review, and ask if they have any to add. Tell them the report will count it as a finding.
+
+If you can't open the customer's project or send requests yourself (for example in a chat app), say so. Give the customer each request to run in their own terminal, with the keys left as placeholders, and ask them to paste back the `jobId` and the files.
 
 ## Authenticate
 
@@ -37,6 +43,8 @@ If what they give has no docs pages (only a spec), say so before you start the r
 Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI model key → `{ "error": "an ai model key is required" }` (401). Missing `primaryName` → `{ "error": "primaryName is required" }` (400).
 
 Only jobs started with that API key can be read. Purchase an API key at https://trailcheck.dev/.
+
+Don't ask for either key in the chat. Ask the customer to set both as environment variables in their own terminal (`TRAILCHECK_API_KEY` and `MODEL_KEY`), and read them from there. If a key is pasted into the chat anyway, warn the customer about the security issues, but allow them to use it if they choose to. When the run is done, tell the customer to replace it: a new TrailCheck key from the app, and a new AI model key from their AI company.
 
 ## What counts
 
@@ -54,7 +62,7 @@ If the customer wants to save calls, they can skip the Combined step. Often the 
 
 ## What comes back
 
-The server POSTs to `callbackUrl` (when provided) when there is a report. One try. Body: `reportMarkdown` and `fixMarkdown` (Validation also `pathMarkdown`). GET info / report / fix still run if called.
+The server POSTs to `callbackUrl` (when provided) when there is a report. One try. Body: `reportMarkdown` and `fixMarkdown` (Validation also `pathMarkdown`). GET info / report / fix still run if called. Use an `https` address. The server sends the report to any address you give, and a plain `http` address sends it unencrypted. The callback is not signed yet. To be sure a report came from TrailCheck, fetch it with `GET /jobs/<Job ID>/report`.
 
 Any start can include `notifyEmail`: an email address to receive a notification when the job ends. The email is sent from info@trailcheck.dev with the job status, the score or the reason the job failed, and how to get the resulting files. Files are not attached. Non-email addresses trigger an error (400 `notifyEmail must be an email address`). The address appears in the job info. Generate Fix File doesn't send an email.
 
