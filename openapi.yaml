@@ -615,6 +615,13 @@ components:
         callbackUrl:
           type: string
           format: uri
+        notifyEmail:
+          type: string
+          format: email
+          description: >-
+            One address. When the job ends Completed or Failed, TrailCheck sends one email
+            there from info@trailcheck.dev, saying how to get the report and fix file. Nothing
+            is attached. Not an address is an error (400 `notifyEmail must be an email address`).
         priorReport:
           $ref: "#/components/schemas/PriorReport"
         guidelines:
@@ -652,6 +659,13 @@ components:
         callbackUrl:
           type: string
           format: uri
+        notifyEmail:
+          type: string
+          format: email
+          description: >-
+            One address. When the job ends Completed or Failed, TrailCheck sends one email
+            there from info@trailcheck.dev, saying how to get the report and fix file. Nothing
+            is attached. Not an address is an error (400 `notifyEmail must be an email address`).
     JobInfo:
       type: object
       required: [id, status, type, title, startedAt]
@@ -683,10 +697,13 @@ components:
         failureCode:
           type: string
           description: When status is Failed. The reason as a code.
-          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, use_cases_unreadable, internal_error]
+          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
         score:
           type: number
           description: When parsed. If scoreStatus is present, this is the second number in that string.
+        scoreMax:
+          type: number
+          description: With score. What the score is out of. 100 for a Review. Lower on a Validation or Combined report when use cases or checks didn't run.
         scoreStatus:
           type: string
           description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string. Omitted when the two numbers already matched.
@@ -715,7 +732,7 @@ components:
           description: Earlier job ids this run started from. Omitted when this job did not start from one.
         useCaseRecords:
           type: array
-          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report. id is an empty string.
+          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report (see useCaseScoresNote). id is an empty string.
           items:
             type: object
             required: [id, title, goal, steps, provided, findingNumbers, score]
@@ -746,6 +763,15 @@ components:
               outcome:
                 type: string
                 description: Present when the report gives one.
+        useCaseScoresNote:
+          type: string
+          description: >-
+            Present when the use cases couldn't be read from the report, so there are no useCaseRecords.
+            The job is still Completed: the report, score and fix file are not affected. Always
+            `The per-use-case scores couldn't be read. The use cases are in the report.`
+        notifyEmail:
+          type: string
+          description: The address sent on the start, when one was sent. The email went there when the job ended.
     CallbackBody:
       type: object
       required: [jobId, type, status, reportMarkdown, fixMarkdown]
@@ -774,7 +800,7 @@ components:
           type: string
         failureCode:
           type: string
-          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, use_cases_unreadable, internal_error]
+          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
         fixFileStatus:
           type: string
           description: When there is no complete fix file. Same as on job info.
