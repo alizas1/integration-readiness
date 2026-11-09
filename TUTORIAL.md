@@ -134,13 +134,13 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `status` | Always | `In progress`, `Completed`, or `Failed`. |
    | `id`, `type`, `title`, `startedAt` | Always | The job ID, `Review`, `Validation`, or `Combined`, the title you sent, and when it started. |
    | `finishedAt` | `Completed` or `Failed` | When the job ended. |
-   | `score`, `scoreMax`, `summary` | `Completed` | The report's score, what it's out of, and a short summary. |
+   | `score`, `scoreMax`, `summary` | `Completed` | The report's score, the maximum possible score, and a short summary. |
    | `failureDetails`, `failureCode` | `Failed` | Why the job failed and what to do, and the reason as a code. |
-   | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See the note in Step 5. |
+   | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See Generate the fix file in Step 5. |
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
    | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
-   | `useCaseScoresNote` | The use cases couldn't be read | There are no `useCaseRecords`. The job is still `Completed`, and the report, score and fix file are not affected. |
-   | `notifyEmail` | You sent one on the start | The address the email went to when the job ended. |
+   | `useCaseScoresNote` | The use cases couldn't be read | The scores for each use case aren't available, so `useCaseRecords` is missing. The job is still `Completed`, and the report, score, and fix file are not affected. |
+   | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
 
    Send this header:
 
