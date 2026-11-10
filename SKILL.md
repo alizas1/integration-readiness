@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-11-09**.
+Written **2026-09-16**. Updated **2026-11-10**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -24,7 +24,7 @@ Before anything else, ask whether they have a TrailCheck API key. If not, send t
 
 ## Before you start a Review
 
-Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next.
+Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next. Choosing an API is not an answer to question 1. If they pick an API you offered, or one they named, list the links you'll send as `resources` and ask whether to add docs pages, llms.txt or anything else before you go on.
 
 1. What should the review cover? For example your API spec, llms.txt and/or docs site. Provide links or files. If I can open your project, I can look in it to find them.
 
