@@ -1,6 +1,6 @@
 # TrailCheck
 
-Last updated **2026-10-30**.
+Last updated **2026-11-13**.
 
 Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.dev/ and get an API key, then call this API with that API key and your AI model key. A full review includes 3 calls. A review takes between 3-20 minutes. A validation build takes longer. Combining them takes 2-5 minutes.
 
@@ -9,6 +9,7 @@ Public contract for the TrailCheck API. Purchase a plan at https://trailcheck.de
 - [Rendered reference](https://alizas1.github.io/integration-readiness/): that same contract in the browser. 
 - [arazzo.yaml](./arazzo.yaml): step order and job id handoffs.
 - [TUTORIAL.md](./TUTORIAL.md): step-by-step guide for humans running a full review and applying the fixes.
+- [llms.txt](./llms.txt): a short guide to these docs for AI agents, also at https://trailcheck.dev/llms.txt. That copy is updated by hand, so change both together.
 
 Process:
 1. Review - reads your resources, discovers use cases and gaps.

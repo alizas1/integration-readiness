@@ -1,0 +1,19 @@
+# TrailCheck
+
+> TrailCheck shows where developers and AI agents get stuck when they try to finish real jobs with your API's published docs and spec, and gives you the fixes. You call it with a TrailCheck API key and your own AI model key.
+
+Buy an API key at https://trailcheck.dev/. A full check uses 3 calls: a Review reads your docs and finds the use cases and gaps, a Validation works through each use case from the docs, and a Combined step merges both into one report and fix file. The Validation is a paper build: it doesn't run code or call your API.
+
+API host: https://agent-server-production-a722.up.railway.app
+
+## Docs
+
+- [SKILL.md](https://raw.githubusercontent.com/alizas1/integration-readiness/main/SKILL.md): how an agent calls the TrailCheck API. Read this first.
+- [openapi.yaml](https://raw.githubusercontent.com/alizas1/integration-readiness/main/openapi.yaml): the contract.
+- [arazzo.yaml](https://raw.githubusercontent.com/alizas1/integration-readiness/main/arazzo.yaml): the order of the steps and how each job ID is passed to the next step.
+- [Tutorial](https://raw.githubusercontent.com/alizas1/integration-readiness/main/TUTORIAL.md): a step-by-step guide for people running a full check and applying the fixes.
+- [API reference](https://alizas1.github.io/integration-readiness/): the contract, in the browser.
+
+## Optional
+
+- [Public docs repo](https://github.com/alizas1/integration-readiness)
