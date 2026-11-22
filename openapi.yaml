@@ -730,7 +730,7 @@ components:
           type: number
     Balance:
       type: object
-      required: [remainingCalls, used, included, paidThrough]
+      required: [remainingCalls, used, included]
       properties:
         remainingCalls:
           type: integer
@@ -741,6 +741,7 @@ components:
         paidThrough:
           type: string
           format: date-time
+          description: Left out when the key has no plan. Then every number is 0.
     JobInfo:
       type: object
       required: [id, status, type, title, startedAt]
