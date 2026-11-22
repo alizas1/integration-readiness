@@ -73,8 +73,8 @@ workflows:
       - stepId: getReport
         description: |
           GET /jobs/{jobId}/report. 200 the report.
-          404 `{ "error": "no report yet" }` while In progress.
-          404 `{ "error": "not found" }` unknown jobId.
+          409 `{ "error": "job is in progress" }` while In progress: wait and ask again.
+          404 `{ "error": "not found" }` unknown jobId. 404 `{ "error": "this job failed, so it has no report" }`.
           There is no rate limit. Wait once a minute between GETs.
         operationId: getJobReport
         parameters:
@@ -88,13 +88,11 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
+              - condition: $statusCode == 409
       - stepId: getFix
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
-          404 `{ "error": "not found" }` is unknown jobId or no fix file yet.
+          409 while In progress. 404 `{ "error": "not found" }` unknown jobId; 404 `{ "error": "no fix file: see fixFileStatus in the job info" }` when the job finished with no fix file.
           Wait while In progress. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
         operationId: getJobFix
         parameters:
@@ -120,8 +118,8 @@ workflows:
       - stepId: getReport
         description: |
           GET /jobs/{jobId}/report. 200 the report.
-          404 `{ "error": "no report yet" }` while In progress.
-          404 `{ "error": "not found" }` unknown jobId.
+          409 `{ "error": "job is in progress" }` while In progress: wait and ask again.
+          404 `{ "error": "not found" }` unknown jobId. 404 `{ "error": "this job failed, so it has no report" }`.
         operationId: getJobReport
         parameters:
           - name: jobId
@@ -134,13 +132,11 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
+              - condition: $statusCode == 409
       - stepId: getFix
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
-          404 `{ "error": "not found" }` is unknown jobId or no fix file yet.
+          409 while In progress. 404 `{ "error": "not found" }` unknown jobId; 404 `{ "error": "no fix file: see fixFileStatus in the job info" }` when the job finished with no fix file.
         operationId: getJobFix
         parameters:
           - name: jobId
@@ -179,7 +175,7 @@ workflows:
       - stepId: getFix
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
-          404 `{ "error": "not found" }` while it is not written.
+          409 `{ "error": "the fix file is being written" }` while it is not written.
           Wait while info `fixFileStatus` is `writing the fix file`. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
         operationId: getJobFix
         parameters:
@@ -193,9 +189,7 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'not found'
+              - condition: $statusCode == 409
 
   - workflowId: run-again
     summary: Rerun of a Review, based on a prior Review. Uses the same use cases as the original.
@@ -261,9 +255,7 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
+              - condition: $statusCode == 409
       - stepId: getFix
         operationId: getJobFix
         parameters:
@@ -334,9 +326,7 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
+              - condition: $statusCode == 409
       - stepId: getFix
         operationId: getJobFix
         parameters:
@@ -348,7 +338,7 @@ workflows:
       - stepId: getPath
         description: |
           GET /jobs/{jobId}/path. 200 the path file.
-          404 `{ "error": "no path file yet" }` while it is not written.
+          409 `{ "error": "job is in progress" }` while In progress. 404 `{ "error": "only Validation jobs have a path file" }`.
         operationId: getJobPath
         parameters:
           - name: jobId
@@ -361,9 +351,7 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no path file yet'
+              - condition: $statusCode == 409
 
   - workflowId: combined
     summary: One Combined report from a Review job and a Validation job.
@@ -418,9 +406,7 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
+              - condition: $statusCode == 409
       - stepId: getFix
         operationId: getJobFix
         parameters:
