@@ -149,7 +149,7 @@ workflows:
     summary: Generate Fix File, on a job that already has a report.
     description: |
       POST /jobs/{jobId}/fix. Same job. GET does not write the file.
-      If the job is In progress, this call is refused. So is a second request while the fix file is being written.
+      If the job is In progress, this call is refused. So is a second request while the fix file is currently being written.
       The job's status does not change while the fix file is written.
     inputs:
       type: object
@@ -175,7 +175,7 @@ workflows:
       - stepId: getFix
         description: |
           GET /jobs/{jobId}/fix. 200 the fix file.
-          409 `{ "error": "the fix file is being written" }` while it is not written.
+          409 `{ "error": "the fix file is currently being written" }` while it is not written.
           Wait while info `fixFileStatus` is `writing the fix file`. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
         operationId: getJobFix
         parameters:
