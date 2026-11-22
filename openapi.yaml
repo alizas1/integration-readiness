@@ -290,7 +290,7 @@ paths:
                     title: example API
                     startedAt: "2026-09-15T12:00:00.000Z"
                     finishedAt: "2026-09-15T12:05:00.000Z"
-                    failureDetails: The report was cut off at the 32,000-token reply limit before it was handed in. Run it again with fewer use cases or fewer resources. If it happens again, contact us with the job ID. You weren't charged a call for this run.
+                    failureDetails: "The report was cut off at the 128,000-token reply limit for claude-sonnet-5-5 before it was handed in. The AI's thinking counts toward that limit. To get a report, start a new job with fewer use cases or fewer pages, or split the use cases across two jobs. Then call Combine with both jobs, plus any Validations. The largest pages this job read: https://example.com/openapi.json (1,124 KB, sent); https://example.com/docs/auth (360 KB, sent); https://example.com/docs/guide (99 KB, opened by following a link). You weren't charged a call for this run."
                     failureCode: reply_limit
         "401":
           $ref: "#/components/responses/ErrorJson"
@@ -531,6 +531,9 @@ components:
         - error: could not tell which company this key is for
         - error: two different ai models were sent - resend with one model.
         - error: send priorReport.jobIds with one or more Review jobs, plus any Validation jobs
+        - error: "job 00000000-0000-0000-0000-000000000000 failed, so it has no report and can't be run again. Send the same `POST /review` request again, with its resources."
+        - error: job 00000000-0000-0000-0000-000000000000 failed, so it has no report to build on. Run that job again first.
+        - error: "Anthropic doesn't have the model claude-sonet-5-5. It may be retired or misspelled. Send a current model name in aiModel.primaryName (and cheapName)."
         - error: not found
         - error: no report yet
         - error: no path file yet
@@ -709,7 +712,7 @@ components:
         failureCode:
           type: string
           description: When status is Failed. The reason as a code.
-          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
+          enum: [reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
         score:
           type: number
           description: When parsed. If scoreStatus is present, this is the second number in that string.
@@ -733,7 +736,7 @@ components:
         fixFileCode:
           type: string
           description: With fixFileStatus. The reason as a code.
-          enum: [writing, incomplete, refused, not_handed_in, reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
+          enum: [writing, incomplete, refused, not_handed_in, reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
         primaryName:
           type: string
           description: Model name for this job. The API key and the AI model key are not returned.
@@ -812,13 +815,13 @@ components:
           type: string
         failureCode:
           type: string
-          enum: [reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
+          enum: [reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
         fixFileStatus:
           type: string
           description: When there is no complete fix file. Same as on job info.
         fixFileCode:
           type: string
-          enum: [writing, incomplete, refused, not_handed_in, reply_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
+          enum: [writing, incomplete, refused, not_handed_in, reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
         reportMarkdown:
           type: string
         fixMarkdown:
