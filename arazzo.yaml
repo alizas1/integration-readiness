@@ -3,7 +3,7 @@ info:
   title: TrailCheck API
   version: "2026-10-14"
   description: |
-    Written **2026-09-16**. Updated **2026-10-14**.
+    Written **2026-09-16**. Updated **2026-11-22**.
 
     Machine-readable flows for the TrailCheck API. Step order and handoffs
     (`jobId` from the 202 into later GETs and `priorReport`).

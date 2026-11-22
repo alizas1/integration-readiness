@@ -203,12 +203,32 @@ paths:
       tags: [Jobs]
       summary: List jobs
       description: |
-        Jobs this API key started, newest startedAt first.
-        Each item is the same object as get job info. The report, fix file, path file, and call list are not included.
-        No filters and no paging. An empty array means this API key has no jobs.
+        The jobs this API key started, newest first. Each entry has id, type, title, status, startedAt, finishedAt and score.
+        The rest of a job's details are at GET /jobs/{jobId}/info. The report, fix file and path file are at GET /jobs/{jobId}/report, /fix and /path.
+        An empty array means this API key has no jobs, or none match the filters.
       operationId: listJobs
       security:
         - AccessApiKey: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Review, Validation, Combined]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [In progress, Completed, Failed]
+        - name: limit
+          in: query
+          required: false
+          description: The newest N jobs.
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: Jobs this API key started. Empty array when there are none.
@@ -217,7 +237,27 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/JobInfo"
+                  $ref: "#/components/schemas/JobListEntry"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+
+  /balance:
+    get:
+      tags: [Jobs]
+      summary: Calls left on your plan
+      description: How many calls this API key has left, how many it has used, how many the plan includes, and the paid-through date. Checking doesn't use a call.
+      operationId: getBalance
+      security:
+        - AccessApiKey: []
+      responses:
+        "200":
+          description: The key's plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Balance"
         "401":
           $ref: "#/components/responses/ErrorJson"
 
@@ -543,6 +583,7 @@ components:
           remainingCalls: 0
         - error: the paid-through date has passed
         - error: no balance
+        - error: status must be In progress, Completed or Failed
     Accepted:
       type: object
       required: [jobId]
@@ -673,10 +714,50 @@ components:
             One address. When the job ends Completed or Failed, TrailCheck sends one email
             there from info@trailcheck.dev, saying how to get the report and fix file. Nothing
             is attached. Not an address is an error (400 `notifyEmail must be an email address`).
+    JobListEntry:
+      type: object
+      required: [id, type, title, status, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [Review, Validation, Combined]
+        title:
+          type: string
+        status:
+          type: string
+          enum: [In progress, Completed, Failed]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        score:
+          type: number
+    Balance:
+      type: object
+      required: [remainingCalls, used, included]
+      properties:
+        remainingCalls:
+          type: integer
+        used:
+          type: integer
+        included:
+          type: integer
+        paidThrough:
+          type: string
+          format: date-time
+          description: Left out when the key has no plan. Then every number is 0.
     JobInfo:
       type: object
       required: [id, status, type, title, startedAt]
       properties:
+        callUsed:
+          type: boolean
+          description: true if this job used a call from the plan; false if it ended with no report and the call was given back.
         id:
           type: string
           format: uuid
