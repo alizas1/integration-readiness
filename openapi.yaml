@@ -129,7 +129,7 @@ paths:
       tags: [Starts]
       summary: Start a Validation
       description: |
-        Needs a Review job (or a previous Validation to run again) that has `report.md`.
+        Builds on a Review job, or runs an earlier Validation job again, when `priorReport` names it. That job must have `report.md`. Without `priorReport`: send `resources`. The Validation job finds its own use cases.
         Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
       operationId: postValidation
       security:
@@ -180,7 +180,7 @@ paths:
     post:
       tags: [Starts]
       summary: Start a Combined report
-      description: Needs a Review job and a Validation job, each with `report.md`.
+      description: Needs one or more Review jobs, plus any Validation jobs, each with `report.md`.
       operationId: postCombined
       security:
         - AccessApiKey: []
@@ -530,7 +530,7 @@ components:
         - error: a Cursor key cannot run this loop
         - error: could not tell which company this key is for
         - error: two different ai models were sent - resend with one model.
-        - error: a Review job and a Validation job are required
+        - error: send priorReport.jobId with one or more Review jobs, plus any Validation jobs
         - error: not found
         - error: no report yet
         - error: no path file yet
@@ -647,7 +647,7 @@ components:
       type: object
       additionalProperties: false
       required: [priorReport]
-      description: One Review job and one Validation job, both with `report.md`.
+      description: One or more Review jobs, plus any Validation jobs, each with `report.md`.
       properties:
         priorReport:
           $ref: "#/components/schemas/PriorReport"

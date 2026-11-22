@@ -215,10 +215,10 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
 
    | Field | Required | What to send |
    | --- | --- | --- |
-   | `priorReport` | Yes | `{ "jobId": "..." }` with one job ID: the Review to validate, or an earlier Validation or Combined job to run again. The Validation reuses that job's resources and use cases. |
+   | `priorReport` | If no `resources` | `{ "jobId": "..." }` with one job ID: the Review job to validate, or an earlier Validation or Combined job to run again. The Validation job reuses that job's resources and use cases. Send it if you ran a Review job on the same API, so the Validation job checks the same resources and use cases. |
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
-   | `resources` | No | More URLs or Markdown strings. They're added to the prior job's resources. |
+   | `resources` | If no `priorReport` | The URLs of your docs and spec, or their text as Markdown strings. When sent along with `priorReport`, they're added to the prior job's resources. |
    | `useCases` | No | More use cases, as `{ "specified": [...] }`. They're added to the prior job's use cases. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report, fix file, and path file to when the job finishes. |
    | `notifyEmail` | No | An email address to notify when the job is complete. |
@@ -268,7 +268,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
    | Field | Required | What to send |
    | --- | --- | --- |
-   | `priorReport` | Yes | `{ "jobId": [...] }` with two job IDs: the Review and the Validation. |
+   | `priorReport` | Yes | `{ "jobId": [...] }` with the job IDs to combine: one or more Review jobs, plus any Validation jobs. |
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
