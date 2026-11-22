@@ -323,7 +323,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
-          description: "`job is in progress`, or `the fix file is being written`: wait and ask again"
+          description: "`job is in progress`, or `the fix file is currently being written`: wait and ask again"
           content:
             application/json:
               schema:

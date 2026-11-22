@@ -68,7 +68,7 @@ The report (`GET /jobs/<Job ID>/report`): 200 the report. 409 `{ "error": "job i
 
 When links were skipped because their sites weren't in `resources`, the report lists them under Skipped links in What We Didn't Review. Tell the customer which sites were skipped, and ask whether it's worth starting a new Review that includes them. It uses a call.
 
-The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 409 `{ "error": "job is in progress" }` or `{ "error": "the fix file is being written" }`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "no fix file: see fixFileStatus in the job info" }`: `fixFileStatus` says why there is no fix file and what to do, and `fixFileCode` gives the reason as a code. The report is saved and the job is `"Completed"`.
+The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 409 `{ "error": "job is in progress" }` or `{ "error": "the fix file is currently being written" }`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "no fix file: see fixFileStatus in the job info" }`: `fixFileStatus` says why there is no fix file and what to do, and `fixFileCode` gives the reason as a code. The report is saved and the job is `"Completed"`.
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "only Validation jobs have a path file" }`. 404 `{ "error": "not found" }` unknown `jobId`.
 
