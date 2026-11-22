@@ -260,9 +260,6 @@ paths:
                 $ref: "#/components/schemas/Balance"
         "401":
           $ref: "#/components/responses/ErrorJson"
-        "404":
-          $ref: "#/components/responses/ErrorJson"
-          description: "`no balance`: this key has no plan."
 
   /jobs/{jobId}/info:
     get:
