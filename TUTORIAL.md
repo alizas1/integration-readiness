@@ -157,7 +157,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `useCaseScoresNote` | The use cases couldn't be read | The scores for each use case aren't available, so `useCaseRecords` is missing. The job is still `Completed`, and the report, score, and fix file are not affected. |
    | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
 
-   If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same start request again. A failed job can't be used in `priorReport`.
+   If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same request again. A failed job can't be used in `priorReport`.
 
    Send this header:
 
