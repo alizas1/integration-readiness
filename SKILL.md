@@ -56,7 +56,7 @@ Each accepted start counts as one call: review, validation, or combine, includin
 
 Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
 
-Typical order: Review → Validation → Combined. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-combined`. Pieces: `review`, `validation`, `combined`, `run-again`, `check-and-fetch`. Combined is intended for a Review and a Validation of the same use cases. The host does not check. Unrelated jobs will combine to create a misleading report.
+Typical order: Review → Validation → Combined. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-combined`. Pieces: `review`, `validation`, `combined`, `combine-jobs`, `run-again`, `check-and-fetch`. The Combined call is intended for jobs about the same use cases, but the host does not check this. Pass one or more Review jobs, plus any related Validation jobs. Unrelated jobs will combine to create a misleading report.
 
 If the customer wants to save calls, they can skip the Combined step. Often the Validation report and fix file are enough. A finding that appeared only in the Review is occasionally missing from the Validation outputs.
 
@@ -89,6 +89,30 @@ For a Review with `resources`:
     "primaryName": "<model name>",
     "key": "<AI model key>"
   }
+}
+```
+
+For a Validation job (`POST /validation`) that builds on a Review job, name that Review job:
+
+```json
+{
+  "priorReport": { "jobId": "<Review job ID>" },
+  "aiModel": { "primaryName": "<model name>", "key": "<AI model key>" }
+}
+```
+
+It uses the Review job's resources and use cases. If the customer already ran a Review job on the same API, always send `priorReport`. Without it, the Validation job might not use the same use cases as the Review job.
+
+A Validation job can also start without a Review job: send `resources` the same way as for a Review job. It finds its own use cases.
+
+To run the same Validation job again, put its job ID in `priorReport.jobId`.
+
+For a Combined job (`POST /combine`), list the jobs to join: at least one Review job, plus any Validation jobs:
+
+```json
+{
+  "priorReport": { "jobIds": ["<Review job ID>", "<Validation job ID>"] },
+  "aiModel": { "primaryName": "<model name>", "key": "<AI model key>" }
 }
 ```
 
