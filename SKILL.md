@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-11-10**.
+Written **2026-09-16**. Updated **2026-11-22**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
