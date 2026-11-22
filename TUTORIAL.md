@@ -157,7 +157,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `callUsed` | `Completed` or `Failed` | `true` if this job used a call from your plan. `false` if it ended with no report and the call was given back. |
    | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
 
-   If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same start request again. A failed job can't be used in `priorReport`.
+   If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same request again. A failed job can't be used in `priorReport`.
 
    Send this header:
 
