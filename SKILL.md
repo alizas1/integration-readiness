@@ -111,7 +111,7 @@ For a Combined job (`POST /combine`), list the jobs to join: at least one Review
 
 ```json
 {
-  "priorReport": { "jobId": ["<Review job ID>", "<Validation job ID>"] },
+  "priorReport": { "jobIds": ["<Review job ID>", "<Validation job ID>"] },
   "aiModel": { "primaryName": "<model name>", "key": "<AI model key>" }
 }
 ```

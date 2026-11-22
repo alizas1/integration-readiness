@@ -276,7 +276,7 @@ In this step, you'll combine both jobs into one report and one fix file.
 
    | Field | Required | What to send |
    | --- | --- | --- |
-   | `priorReport` | Yes | `{ "jobId": [...] }` with the job IDs to combine: one or more Review jobs, plus any Validation jobs. |
+   | `priorReport` | Yes | `{ "jobIds": [...] }` with the job IDs to combine: one or more Review jobs, plus any Validation jobs. |
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
    | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
@@ -302,7 +302,7 @@ In this step, you'll combine both jobs into one report and one fix file.
      -H "x-model-key: $MODEL_KEY" \
      -H "Content-Type: application/json" \
      -d '{
-       "priorReport": { "jobId": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
+       "priorReport": { "jobIds": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
        "aiModel": { "primaryName": "claude-sonnet-5-5" }
      }' | jq -r '.jobId // .error')
    echo "Combined job: $COMBINED_JOB_ID"
@@ -425,7 +425,7 @@ export COMBINED_JOB_ID=$(curl -s -X POST "https://agent-server-production-a722.u
   -H "x-model-key: $MODEL_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "priorReport": { "jobId": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
+    "priorReport": { "jobIds": ["'"$REVIEW_JOB_ID"'", "'"$VALIDATION_JOB_ID"'"] },
     "aiModel": { "primaryName": "claude-sonnet-5-5" }
   }' | jq -r '.jobId // .error')
 echo "Combined job: $COMBINED_JOB_ID"
