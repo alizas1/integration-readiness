@@ -82,7 +82,6 @@ This applies to Claude keys. With other AI companies' keys, a job that reads too
    | `title` | No | A name for the job. It appears in the job info. |
    | `useCases` | No | Specific tasks an integrator should be able to finish, as `{ "specified": [...] }` if you have them. Omit it and the Review finds use cases on its own. |
    | `guidelines` | No | Your API style rules as one Markdown string. The Review checks your API against them. |
-   | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
    | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `priorReport` | No | `{ "jobId": "..." }` of an earlier Review, to run that same check again. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
@@ -228,7 +227,6 @@ In this step, you'll start a Validation. A Validation runs a cold build: an agen
    | `title` | No | A name for the job. It appears in the job info. |
    | `resources` | If no `priorReport` | The URLs of your docs and spec, or their text as Markdown strings. When sent along with `priorReport`, they're added to the prior job's resources. |
    | `useCases` | No | More use cases, as `{ "specified": [...] }`. They're added to the prior job's use cases. |
-   | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report, fix file, and path file to when the job finishes. |
    | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
    | `aiModel.company` | No - but recommended| The AI model company, for example `anthropic`. Omit it and TrailCheck works it out from the key. |
@@ -279,7 +277,6 @@ In this step, you'll combine both jobs into one report and one fix file.
    | `priorReport` | Yes | `{ "jobIds": [...] }` with the job IDs to combine: one or more Review jobs, plus any Validation jobs. |
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
-   | `callbackUrl` | No - but recommended | A URL that TrailCheck POSTs the report and fix file to when the job finishes. |
    | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
    | `aiModel.company` | No - but recommended| The AI model company, for example `anthropic`. Omit it and TrailCheck works it out from the key. |
@@ -439,5 +436,4 @@ curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB
 
 - **Run it again after you fix things.** Start a new Review with `"priorReport": { "jobId": "<Review job ID>" }`. It keeps the earlier use cases and adds any new `resources` you send. This works only for a job that has a report.
 - **Check against your own conventions.** Send `guidelines`, a Markdown string of your API style rules, on the Review start.
-- **Skip the waiting loop.** Add a `callbackUrl` to any start. TrailCheck POSTs the report and fix file to it once, so keep polling as a fallback.
 - **Watch your call count.** Each start uses one call from your plan, and a job that ends with no report gives the call back. Fetching files and writing a fix file are free. Jobs stay on the host for 3 months.

@@ -62,8 +62,6 @@ If the customer wants to save calls, they can skip the Combined step. Often the 
 
 ## What comes back
 
-The server POSTs to `callbackUrl` (when provided) when there is a report. One try. Body: `reportMarkdown` and `fixMarkdown` (Validation also `pathMarkdown`). GET info / report / fix still run if called. Use an `https` address. The server sends the report to any address you give, and a plain `http` address sends it unencrypted. The callback is not signed yet. To be sure a report came from TrailCheck, fetch it with `GET /jobs/<Job ID>/report`.
-
 Any start can include `notifyEmail`: an email address to receive a notification when the job ends. The email is sent from info@trailcheck.dev with the job status, the score or the reason the job failed, and how to get the resulting files. Files are not attached. Non-email addresses trigger an error (400 `notifyEmail must be an email address`). The address appears in the job info. Generate Fix File doesn't send an email.
 
 The report (`GET /jobs/<Job ID>/report`): 200 the report. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "this job failed, so it has no report" }`.
