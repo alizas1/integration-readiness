@@ -366,7 +366,7 @@ workflows:
           contentType: application/json
           payload:
             priorReport:
-              jobId:
+              jobIds:
                 - $inputs.reviewJobId
                 - $inputs.validationJobId
             title: $inputs.title
