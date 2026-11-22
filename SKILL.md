@@ -120,6 +120,8 @@ HTML, JSON, YAML, Markdown, and plain text are read. PDF, image, audio, video, a
 
 A Review reads only the hosts in `resources`, plus hosts that an llms.txt in `resources` links to. A link it finds to any other host, for example GitHub, is not read. Send a URL on each host you need: every docs host, the spec host, the sample repo.
 
+A job reads up to 85% of the model's limit (Claude keys). When it gets there, it stops reading and writes the report with what it has. Pages not read are listed under What We Didn't Review. A job works in steps, and at every step everything read so far is sent again, billed to the AI model key each time. If the customer sends a large spec or many pages, tell them this before you start. With other companies' keys, a job that reads too much fails, and the call is given back.
+
 Send a public URL when the page or file is already available publicly as HTML, JSON, YAML, Markdown, or plain text (This includes OpenAPI files and llms.txt).
 
 Anything else must be turned into one of these:
@@ -130,6 +132,6 @@ Anything else must be turned into one of these:
 
 Each entry in `resources` is a string. An object is left out of the job.
 
-A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400).
+A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400). A `priorReport` that names a failed job is refused, because a failed job has no report (400). When a job fails, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same start request again.
 
 Optional on a Review: `guidelines`, a markdown string of their API conventions. The review checks the API against that file and against the checklist. Omit it when they have none. On a run-again, omitting it keeps the guidelines from the prior Review when that job had them. A string on this start is the file for this job. Send it on `POST /review`. On Validation or Combined the host returns `{ "error": "send guidelines on the Review start" }` (400). A value that is not a string returns `{ "error": "guidelines must be markdown text" }` (400).

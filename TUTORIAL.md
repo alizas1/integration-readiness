@@ -67,6 +67,12 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
 
 A link to your docs home lets the Review look through the rest of that site for guides.
 
+**How much to send.** A job can read up to 85% of what the AI model can hold: 850,000 tokens on current Claude models. The largest job in our testing used 58%. If a job reaches the limit, it stops reading and writes the report with what it has, and the pages it didn't read are listed under What We Didn't Review.
+
+A job works in steps: the AI reads a page, then decides what to read next. At every step, everything read so far is sent to the AI again, and your AI model key is billed for it each time. The more a job reads, the more each step costs.
+
+This applies to Claude keys. With other AI companies' keys, a job that reads too much fails, and the call is given back.
+
 1. Send a `POST` request to `/review`. The request body takes these fields:
 
    | Field | Required | What to send |
@@ -150,6 +156,8 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
    | `useCaseScoresNote` | The use cases couldn't be read | The scores for each use case aren't available, so `useCaseRecords` is missing. The job is still `Completed`, and the report, score, and fix file are not affected. |
    | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
+
+   If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same start request again. A failed job can't be used in `priorReport`.
 
    Send this header:
 
@@ -429,7 +437,7 @@ curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB
 
 ## Next steps
 
-- **Run it again after you fix things.** Start a new Review with `"priorReport": { "jobId": "<Review job ID>" }`. It keeps the earlier use cases and adds any new `resources` you send.
+- **Run it again after you fix things.** Start a new Review with `"priorReport": { "jobId": "<Review job ID>" }`. It keeps the earlier use cases and adds any new `resources` you send. This works only for a job that has a report.
 - **Check against your own conventions.** Send `guidelines`, a Markdown string of your API style rules, on the Review start.
 - **Skip the waiting loop.** Add a `callbackUrl` to any start. TrailCheck POSTs the report and fix file to it once, so keep polling as a fallback.
 - **Watch your call count.** Each start uses one call from your plan, and a job that ends with no report gives the call back. Fetching files and writing a fix file are free. Jobs stay on the host for 3 months.
