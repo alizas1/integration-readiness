@@ -204,7 +204,7 @@ paths:
       summary: List jobs
       description: |
         The jobs this API key started, newest first. Each entry has id, type, title, status, startedAt, finishedAt and score.
-        For the job record info, GET /jobs/{jobId}/info. Does not include the generated files.
+        The rest of a job's details are at GET /jobs/{jobId}/info. The report, fix file and path file are at GET /jobs/{jobId}/report, /fix and /path.
         An empty array means this API key has no jobs, or none match the filters.
       operationId: listJobs
       security:
