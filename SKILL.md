@@ -52,7 +52,7 @@ Each accepted start counts as one call: review, validation, or combine, includin
 
 Calls left: `GET /balance`, with the same `Authorization` header. Checking doesn't use a call. 200 `{ "remainingCalls": 13, "used": 2, "included": 15, "paidThrough": "2026-12-15" }`. Job info has `callUsed`: `false` when the job ended with no report and the call was given back.
 
-**Note:** `GET /jobs` lists the jobs this API key started, newest first. `[]` when there are none. Keep the `jobId` from the 202. The list is how to find that id again. Every start POST is a new job. If the 202 already arrived, GET the files (and `GET /jobs/<Job ID>/info` if desired).
+**Note:** Keep the `jobId` from the 202. Every start POST is a new job.
 
 ## Sequences
 
