@@ -595,7 +595,7 @@ components:
       description: At least one of `resources` or `priorReport` is required.
       properties:
         resources:
-          description: URL strings, or a single string.
+          description: URL strings, or a single string. Only the hosts in these URLs are read, plus hosts that an llms.txt here links to.
           oneOf:
             - type: array
               items:

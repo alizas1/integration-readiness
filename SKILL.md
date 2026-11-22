@@ -24,9 +24,9 @@ Before anything else, ask whether they have a TrailCheck API key. If not, send t
 
 ## Before you start a Review
 
-Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next. Choosing an API is not an answer to question 1. If they pick an API you offered, or one they named, list the links you'll send as `resources` and ask whether to add docs pages, llms.txt or anything else before you go on.
+Ask these questions one at a time. Wait for each answer before asking the next. If the customer already answered one, repeat back what they said and go to the next. Choosing an API is not an answer to question 1. If they pick an API you offered, or one they named, list the links you'll send as `resources` and the hosts the review will read. Ask whether anything they care about is on another host, for example a sample on GitHub, and whether to add docs pages, llms.txt or anything else before you go on.
 
-1. What should the review cover? For example your API spec, llms.txt and/or docs site. Provide links or files. If I can open your project, I can look in it to find them.
+1. What should the review cover? For example your API spec, llms.txt and/or docs site, the getting started and authentication pages, the guide for each use case, and sample code. Provide links or files. If I can open your project, I can look in it to find them. The review reads only the sites in the links you send. Links to other sites are skipped, so send a link for each site you need.
 
 2. What kind of review should I run? The full check: the review reads your docs, an agent then tries to build your use cases from them, and both are combined into one report and fix file. Uses 3 calls. Or something else?
 
@@ -68,6 +68,8 @@ Any start can include `notifyEmail`: an email address to receive a notification 
 
 The report (`GET /jobs/<Job ID>/report`): 200 the report. 404 `{ "error": "no report yet" }` while `"In progress"`. 404 `{ "error": "not found" }` unknown `jobId`.
 
+When links were skipped because their sites weren't in `resources`, the report lists them under Skipped links in What We Didn't Review. Tell the customer which sites were skipped, and ask whether it's worth starting a new Review that includes them. It uses a call.
+
 The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 404 `{ "error": "not found" }` — unknown `jobId`, or no fix file yet. Wait while `"In progress"`. Stop when `fixFileStatus` is there and is not `writing the fix file`: it says why there is no fix file and what to do, and `fixFileCode` gives the reason as a code. The report is saved and the job is `"Completed"`. GET info first when those 404s need telling apart.
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 404 `{ "error": "no path file yet" }` while it is not written. 404 `{ "error": "not found" }` unknown `jobId`.
@@ -91,6 +93,8 @@ For a Review with `resources`:
 ```
 
 HTML, JSON, YAML, Markdown, and plain text are read. PDF, image, audio, video, and `octet-stream` are not.
+
+A Review reads only the hosts in `resources`, plus hosts that an llms.txt in `resources` links to. A link it finds to any other host, for example GitHub, is not read. Send a URL on each host you need: every docs host, the spec host, the sample repo.
 
 Send a public URL when the page or file is already available publicly as HTML, JSON, YAML, Markdown, or plain text (This includes OpenAPI files and llms.txt).
 

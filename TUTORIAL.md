@@ -58,6 +58,15 @@ TrailCheck needs two keys on every start: a TrailCheck API key, and a key for th
 
 In this step, you'll start a Review and get back a job ID. A Review reads your docs and spec like a new integrator would and finds the gaps for the use cases you name. You'll use the job ID in every later step.
 
+**What to send.** Send what an integrator would read to finish your use cases:
+
+- Your spec, such as an OpenAPI file, if you have one.
+- Your docs pages: the getting started guide, the authentication page, and the guide for each use case you name. When no docs pages are provided or linked in a provided llms.txt, this counts as a finding.
+- Your llms.txt, if you have one. The Review follows its links.
+- Sample code or SDK docs, if integrators use them. If they're on another site, such as GitHub, send that link too.
+
+A link to your docs home lets the Review look through the rest of that site for guides.
+
 1. Send a `POST` request to `/review`. The request body takes these fields:
 
    | Field | Required | What to send |
@@ -121,7 +130,7 @@ In this step, you'll start a Review and get back a job ID. A Review reads your d
 
 **Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs` with your `Authorization` header. It lists every job your API key started, newest first.
 
-**Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`. TrailCheck reads only the hosts in `resources`, and the hosts an `llms.txt` listed in `resources` links to.
+**Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`. TrailCheck reads only the hosts in `resources`, and the hosts an `llms.txt` listed in `resources` links to. If a link is skipped, the report lists it under Skipped links.
 
 ## Step 3: Wait for the job
 
