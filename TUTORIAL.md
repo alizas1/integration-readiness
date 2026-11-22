@@ -130,10 +130,10 @@ This applies to Claude keys. With other AI companies' keys, a job that reads too
    # Code in next step goes here...
    ```
 
-   The server returns `202` with `{ "jobId": "...", "remainingCalls": 14 }`. `remainingCalls` is how many calls your plan has left after this start.
+   The server returns `202` with `{ "jobId": "...", "remainingCalls": 14 }`. `remainingCalls` is how many calls your plan has left after this start. To check it any time, send a `GET` request to `/balance`.
    If it prints an error message instead of an ID, check the message. For example, `unauthorized` means the TrailCheck API key is wrong or missing. A `402` means your plan has no calls left, its paid-through date has passed, or the key has no plan attached.
 
-**Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs` with your `Authorization` header. It lists every job your API key started, newest first.
+**Important:** Keep the job ID. If you lose it, send a `GET` request to `/jobs` with your `Authorization` header. It lists every job your API key started, newest first. To narrow the list, add `type`, `status` or `limit`, for example `/jobs?type=Review&limit=5`. Each entry has the job's ID, type, title, status, start and finish times, and score. For the job record info, send a `GET` request to `/jobs/<jobId>/info`. It doesn't include the generated files.
 
 **Note:** TrailCheck reads HTML, JSON, YAML, Markdown, and plain text. It doesn't read PDFs or images. Convert those to Markdown first, and send the Markdown as a string in `resources`. TrailCheck reads only the hosts in `resources`, and the hosts an `llms.txt` listed in `resources` links to. If a link is skipped, the report lists it under Skipped links.
 
@@ -154,6 +154,7 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
    | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
    | `useCaseScoresNote` | The use cases couldn't be read | The scores for each use case aren't available, so `useCaseRecords` is missing. The job is still `Completed`, and the report, score, and fix file are not affected. |
+   | `callUsed` | `Completed` or `Failed` | `true` if this job used a call from your plan. `false` if it ended with no report and the call was given back. |
    | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
 
    If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same start request again. A failed job can't be used in `priorReport`.
@@ -436,4 +437,4 @@ curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB
 
 - **Run it again after you fix things.** Start a new Review with `"priorReport": { "jobId": "<Review job ID>" }`. It keeps the earlier use cases and adds any new `resources` you send. This works only for a job that has a report.
 - **Check against your own conventions.** Send `guidelines`, a Markdown string of your API style rules, on the Review start.
-- **Watch your call count.** Each start uses one call from your plan, and a job that ends with no report gives the call back. Fetching files and writing a fix file are free. Jobs stay on the host for 3 months.
+- **Watch your call count.** Each start uses one call from your plan, and a job that ends with no report gives the call back. `GET /balance` shows how many you have left. Fetching files and writing a fix file are free. Jobs stay on the host for 3 months.
