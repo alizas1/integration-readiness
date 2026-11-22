@@ -196,7 +196,7 @@ paths:
               twoJobs:
                 value:
                   priorReport:
-                    jobId:
+                    jobIds:
                       - "00000000-0000-0000-0000-000000000001"
                       - "00000000-0000-0000-0000-000000000002"
                   aiModel:
@@ -530,7 +530,7 @@ components:
         - error: a Cursor key cannot run this loop
         - error: could not tell which company this key is for
         - error: two different ai models were sent - resend with one model.
-        - error: send priorReport.jobId with one or more Review jobs, plus any Validation jobs
+        - error: send priorReport.jobIds with one or more Review jobs, plus any Validation jobs
         - error: not found
         - error: no report yet
         - error: no path file yet
@@ -578,6 +578,18 @@ components:
         - type: array
           items:
             type: string
+    CombinedPriorReport:
+      type: object
+      additionalProperties: false
+      required: [jobIds]
+      properties:
+        jobIds:
+          description: The jobs to combine, a list of IDs or a comma-separated string. One or more Review jobs, plus any Validation jobs.
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
     PriorReport:
       type: object
       additionalProperties: false
@@ -650,7 +662,7 @@ components:
       description: One or more Review jobs, plus any Validation jobs, each with `report.md`.
       properties:
         priorReport:
-          $ref: "#/components/schemas/PriorReport"
+          $ref: "#/components/schemas/CombinedPriorReport"
         title:
           type: string
           default: ""
