@@ -11,9 +11,6 @@ info:
 
     Typical sequence: Review → Validation → Combined (`review-then-validation-then-combined`).
 
-    The server POSTs to `callbackUrl` when there is a report. One try. That POST
-    is not a caller step here. These GET steps still run.
-
     `GET /jobs/{jobId}/info` is not in these sequences. It is a separate call
     (`getJobInfo`) when the caller wants status, `score`, `scoreStatus`, or
     `fixFileStatus`.
@@ -45,9 +42,6 @@ workflows:
           type: array
           items:
             type: string
-        callbackUrl:
-          type: string
-          format: uri
         guidelines:
           type: string
           description: Markdown of their API conventions. Omit when they have none.
@@ -62,7 +56,6 @@ workflows:
           payload:
             resources: $inputs.resources
             title: $inputs.title
-            callbackUrl: $inputs.callbackUrl
             guidelines: $inputs.guidelines
             useCases:
               specified: $inputs.specified
@@ -103,7 +96,7 @@ workflows:
           - condition: $statusCode == 200
 
   - workflowId: check-and-fetch
-    summary: The result from a job that already exists, when the callback did not arrive, or to pull again.
+    summary: The result from a job that already exists.
     description: |
       GET report then GET fix. On Validation, also GET /jobs/{jobId}/path
       (`getJobPath` / the `validation` workflow’s getPath step).
@@ -215,9 +208,6 @@ workflows:
           type: array
           items:
             type: string
-        callbackUrl:
-          type: string
-          format: uri
         guidelines:
           type: string
           description: Markdown of their API conventions. Omit to keep the prior Review's guidelines when that job had them.
@@ -234,7 +224,6 @@ workflows:
               jobId: $inputs.priorJobId
             resources: $inputs.resources
             title: $inputs.title
-            callbackUrl: $inputs.callbackUrl
             guidelines: $inputs.guidelines
             useCases:
               specified: $inputs.specified
@@ -290,9 +279,6 @@ workflows:
           type: array
           items:
             type: string
-        callbackUrl:
-          type: string
-          format: uri
     outputs:
       jobId: $steps.start.outputs.jobId
     steps:
@@ -306,7 +292,6 @@ workflows:
               jobId: $inputs.reviewJobId
             resources: $inputs.resources
             title: $inputs.title
-            callbackUrl: $inputs.callbackUrl
             useCases:
               specified: $inputs.specified
         successCriteria:
@@ -371,9 +356,6 @@ workflows:
           format: uuid
         title:
           type: string
-        callbackUrl:
-          type: string
-          format: uri
     outputs:
       jobId: $steps.start.outputs.jobId
     steps:
@@ -388,7 +370,6 @@ workflows:
                 - $inputs.reviewJobId
                 - $inputs.validationJobId
             title: $inputs.title
-            callbackUrl: $inputs.callbackUrl
         successCriteria:
           - condition: $statusCode == 202
         outputs:
@@ -435,9 +416,6 @@ workflows:
           type: array
           items:
             type: string
-        callbackUrl:
-          type: string
-          format: uri
         guidelines:
           type: string
           description: Markdown of their API conventions, sent on the Review.
@@ -455,8 +433,6 @@ workflows:
             value: $inputs.title
           - name: specified
             value: $inputs.specified
-          - name: callbackUrl
-            value: $inputs.callbackUrl
           - name: guidelines
             value: $inputs.guidelines
       - stepId: validation
@@ -464,8 +440,6 @@ workflows:
         parameters:
           - name: reviewJobId
             value: $steps.review.outputs.jobId
-          - name: callbackUrl
-            value: $inputs.callbackUrl
       - stepId: combined
         workflowId: combined
         parameters:
@@ -473,5 +447,3 @@ workflows:
             value: $steps.review.outputs.jobId
           - name: validationJobId
             value: $steps.validation.outputs.jobId
-          - name: callbackUrl
-            value: $inputs.callbackUrl

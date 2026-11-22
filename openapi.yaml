@@ -9,7 +9,7 @@ info:
     A failure on one call does not affect the outputs from earlier calls.
     
     This file is the machine-readable contract for caller methods
-    (health, three starts, GET the job list, GET job info and files, Generate Fix File (POST to write the fix file on a job that already has a report), and the optional POST to `callbackUrl`).
+    (health, three starts, GET the job list, GET job info and files, and Generate Fix File (POST to write the fix file on a job that already has a report)).
     Keep the `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     Jobs and their files stay on the host for 3 months.
 
@@ -110,25 +110,6 @@ paths:
           description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
-      callbacks:
-        jobResult:
-          "{$request.body#/callbackUrl}":
-            post:
-              summary: One-try POST of the result (best-effort)
-              description: |
-                If `callbackUrl` was set and the job has a report (or findings could not be read).
-                One try. Any HTTP status is ignored. The body is not read.
-                If this POST does not arrive, GET `/jobs/{jobId}/info` then the files.
-                Receiver must be safe to run twice.
-              requestBody:
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/CallbackBody"
-              responses:
-                "2XX":
-                  description: Received. Empty body is fine.
 
   /validation:
     post:
@@ -173,20 +154,6 @@ paths:
           description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
-      callbacks:
-        jobResult:
-          "{$request.body#/callbackUrl}":
-            post:
-              summary: One-try POST of the result (best-effort)
-              requestBody:
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/CallbackBody"
-              responses:
-                "2XX":
-                  description: Received. Empty body is fine.
 
   /combine:
     post:
@@ -230,21 +197,6 @@ paths:
           description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
-      callbacks:
-        jobResult:
-          "{$request.body#/callbackUrl}":
-            post:
-              summary: One-try POST of the result (best-effort)
-              description: Same body as Review. No `pathMarkdown`.
-              requestBody:
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/CallbackBody"
-              responses:
-                "2XX":
-                  description: Received. Empty body is fine.
 
   /jobs:
     get:
@@ -664,9 +616,6 @@ components:
           description: Not implemented yet.
         aiModel:
           $ref: "#/components/schemas/AiModel"
-        callbackUrl:
-          type: string
-          format: uri
         notifyEmail:
           type: string
           format: email
@@ -692,9 +641,6 @@ components:
       properties:
         aiModel:
           $ref: "#/components/schemas/AiModel"
-        callbackUrl:
-          type: string
-          format: uri
     CombinedStart:
       type: object
       additionalProperties: false
@@ -708,9 +654,6 @@ components:
           default: ""
         aiModel:
           $ref: "#/components/schemas/AiModel"
-        callbackUrl:
-          type: string
-          format: uri
         notifyEmail:
           type: string
           format: email
@@ -824,49 +767,6 @@ components:
         notifyEmail:
           type: string
           description: The address sent on the start, when one was sent. The email went there when the job ended.
-    CallbackBody:
-      type: object
-      required: [jobId, type, status, reportMarkdown, fixMarkdown]
-      properties:
-        useCasesNote:
-          type: string
-          description: Present when the use cases section had text that is not in useCaseRecords. Always `The use cases section had extra text that isn't in this list. Read it in the report.`
-        jobId:
-          type: string
-          format: uuid
-        type:
-          type: string
-          enum: [Review, Validation, Combined]
-        status:
-          type: string
-          enum: [Completed, Failed]
-        score:
-          type: number
-          description: When parsed. If scoreStatus is present, this is the second number in that string.
-        summary:
-          type: string
-        scoreStatus:
-          type: string
-          description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string.
-        failureDetails:
-          type: string
-        failureCode:
-          type: string
-          enum: [reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
-        fixFileStatus:
-          type: string
-          description: When there is no complete fix file. Same as on job info.
-        fixFileCode:
-          type: string
-          enum: [writing, incomplete, refused, not_handed_in, reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
-        reportMarkdown:
-          type: string
-        fixMarkdown:
-          type: string
-          description: Empty string when there is no fix file or findings could not be read.
-        pathMarkdown:
-          type: string
-          description: Validation only.
     CallList:
       type: array
       items:
