@@ -102,6 +102,12 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "402":
           $ref: "#/components/responses/CallsRefused"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`not found`: `priorReport` names a job that doesn't exist."
+        "409":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -159,6 +165,12 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "402":
           $ref: "#/components/responses/CallsRefused"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`not found`: `priorReport` names a job that doesn't exist."
+        "409":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -210,6 +222,12 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "402":
           $ref: "#/components/responses/CallsRefused"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`not found`: `priorReport` names a job that doesn't exist."
+        "409":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`job is in progress`: `priorReport` names a job that is still running. Wait and send it again."
         "503":
           $ref: "#/components/responses/ErrorJson"
       callbacks:
@@ -316,7 +334,13 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`no report yet` while In progress (wait); `not found` if the ID is unknown"
+          description: "`not found` if the ID is unknown; `this job failed, so it has no report`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: "`job is in progress`: wait and ask again"
           content:
             application/json:
               schema:
@@ -341,7 +365,13 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if there is no fix file yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID; In progress wait; `fixFileStatus` present and not `writing the fix file` is the end. GET does not write the file."
+          description: "`not found` if the ID is unknown; `no fix file: see fixFileStatus in the job info` when the job finished with no fix file. GET does not write the file."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: "`job is in progress`, or `the fix file is currently being written`: wait and ask again"
           content:
             application/json:
               schema:
@@ -353,9 +383,9 @@ paths:
         The job must already have `report.md`. Writes `fix.md` on this same job.
         202 `{ "jobId" }` is that same ID. The job's status does not change: while the fix file is written, `fixFileStatus` is `writing the fix file`. GET info until it is no longer that, then GET the fix file.
         If `fix.md` is already there, this run overwrites it.
-        Job In progress → `{ "error": "job is in progress" }` (400).
-        A fix file already being written → `{ "error": "the fix file is already being written" }` (400).
-        No report → `{ "error": "no report yet" }` (404).
+        Job In progress → `{ "error": "job is in progress" }` (409).
+        A fix file already being written → `{ "error": "the fix file is already being written" }` (409).
+        A failed job → `{ "error": "this job failed, so it has no report to write a fix file from" }` (400).
         Customer body needs `aiModel` (`primaryName` required) the same as a start.
         `.md` on the path still works.
       operationId: generateFixFile
@@ -385,6 +415,8 @@ paths:
           $ref: "#/components/responses/ErrorJson"
         "404":
           $ref: "#/components/responses/ErrorJson"
+        "409":
+          $ref: "#/components/responses/ErrorJson"
         "503":
           $ref: "#/components/responses/ErrorJson"
 
@@ -407,7 +439,13 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`no path file yet` while it is not written (wait); `not found` if the ID is unknown"
+          description: "`not found` if the ID is unknown; `only Validation jobs have a path file`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: "`job is in progress`: wait and ask again"
           content:
             application/json:
               schema:
@@ -432,7 +470,13 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if the call list is not written yet, or the ID is unknown. Same string for both. GET info first: info 404 is unknown ID."
+          description: "`not found` if the ID is unknown"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: "`job is in progress`: the call list is written when the job ends"
           content:
             application/json:
               schema:
@@ -535,9 +579,14 @@ components:
         - error: job 00000000-0000-0000-0000-000000000000 failed, so it has no report to build on. Run that job again first.
         - error: "Anthropic doesn't have the model claude-sonet-5-5. It may be retired or misspelled. Send a current model name in aiModel.primaryName (and cheapName)."
         - error: not found
-        - error: no report yet
-        - error: no path file yet
+        - error: "unknown field: usecases"
+        - error: resources must be a string or list of strings
+        - error: this job failed, so it has no report
+        - error: "no fix file: see fixFileStatus in the job info"
+        - error: only Validation jobs have a path file
+        - error: this job failed, so it has no report to write a fix file from
         - error: job is in progress
+        - error: the fix file is already being written
         - error: no calls left
           remainingCalls: 0
         - error: the paid-through date has passed
