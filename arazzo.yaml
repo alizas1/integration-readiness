@@ -416,6 +416,65 @@ workflows:
         successCriteria:
           - condition: $statusCode == 200
 
+  - workflowId: combine-jobs
+    summary: One Combined report from a list of jobs, for example two Reviews that split a job's use cases.
+    description: |
+      Writes `report.md` and `fix.md`. Pass one or more Review jobs, plus any related Validation jobs.
+      Intended for jobs about the same use cases. The host does not check.
+      Unrelated jobs will combine to create a misleading report.
+    inputs:
+      type: object
+      required: [jobIds]
+      properties:
+        jobIds:
+          type: array
+          minItems: 2
+          items:
+            type: string
+            format: uuid
+        title:
+          type: string
+    outputs:
+      jobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /combine with the job ids. Expected 202 `{ "jobId" }`.
+        operationId: postCombined
+        requestBody:
+          contentType: application/json
+          payload:
+            priorReport:
+              jobIds: $inputs.jobIds
+            title: $inputs.title
+        successCriteria:
+          - condition: $statusCode == 202
+        outputs:
+          jobId: $response.body.jobId
+      - stepId: getReport
+        operationId: getJobReport
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForReport
+            type: retry
+            retryLimit: 120
+            criteria:
+              - context: $response.body
+                type: jsonpath
+                condition: $.error == 'no report yet'
+      - stepId: getFix
+        operationId: getJobFix
+        parameters:
+          - name: jobId
+            in: path
+            value: $steps.start.outputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+
   - workflowId: review-then-validation-then-combined
     summary: Typical sequence. Review, then Validation, then Combined.
     description: |
