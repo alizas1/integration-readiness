@@ -13,7 +13,7 @@ You'll complete the following steps:
 5. [Combine the Review and the Validation](#step-5-combine-the-review-and-the-validation)
 6. [Apply the fix file](#step-6-apply-the-fix-file)
 
-A full check uses 3 calls from your plan (steps 2-5). A review takes between 3-20 minutes. A validation build takes longer. Combining them takes 2-5 minutes.
+A full check uses 3 calls from your plan (steps 2-5). A Review takes about 3–10 minutes, and so does a Validation. Big docs can take longer.
 
 TrailCheck itself is a plain HTTPS and JSON API, so you can call it from any language or HTTP client.
 
@@ -80,8 +80,8 @@ This applies to Claude keys. With other AI companies' keys, a job that reads too
    | `resources` | Required for first time review | The URLs of your docs and spec, or their text as markdown strings. |
    | `aiModel.primaryName` | Yes | The name of any model your AI model key can call. |
    | `title` | No | A name for the job. It appears in the job info. |
-   | `useCases` | No | Specific tasks an integrator should be able to finish, as `{ "specified": [...] }` if you have them. Omit it and the Review finds use cases on its own. |
-   | `guidelines` | No | Your API style rules as one Markdown string. The Review checks your API against them. |
+   | `useCases` | No | Specific tasks an integrator should be able to finish, as `{ "specified": [...] }` if you have them. Up to 4. If you send more, only the first 4 are used. Omit it and the Review finds use cases on its own. |
+   | `guidelines` | No | Your API style guide, as one Markdown string. The Review checks your API against it. |
    | `notifyEmail` | No | An email address to notify when the job is complete. |
    | `priorReport` | No | `{ "jobId": "..." }` of an earlier Review, to run that same check again. |
    | `aiModel.cheapName` | No | A cheaper model for the lighter passes. Omit it and `primaryName` runs every pass. |
@@ -151,11 +151,20 @@ In this step, you'll check the Review's status and wait for it to finish.
    | `score`, `scoreMax`, `summary` | `Completed` | The report's score, the maximum possible score, and a short summary. |
    | `failureDetails`, `failureCode` | `Failed` | Why the job failed and what to do, and the reason as a code. |
    | `fixFileStatus`, `fixFileCode` | The report exists but there is no complete fix file | Why and what to do, and the reason as a code. See Generate the fix file in Step 5. |
-   | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. |
+   | `useCaseRecords` | After the report is saved | Each use case the report checked, with its score and finding numbers. Each use case's score counts only the findings that affect it. The overall score counts every finding, so it can be lower than every use case's score. |
    | `useCasesNote` | The use cases section had extra text | That text isn't in `useCaseRecords`. Read it in the report. |
    | `useCaseScoresNote` | The use cases couldn't be read | The scores for each use case aren't available, so `useCaseRecords` is missing. The job is still `Completed`, and the report, score, and fix file are not affected. |
    | `callUsed` | `Completed` or `Failed` | `true` if this job used a call from your plan. `false` if it ended with no report and the call was given back. |
    | `notifyEmail` | The start request included `notifyEmail` | The address that receives the notification when the job ends. |
+
+   **How the score works.** Score = 100 − (🔴 High × 6) − (🟠 Med-High × 4) − (🟡 Medium × 2). ⚪ Low findings appear in the report but don't affect the score. In a Validation or Combined report, `scoreMax` is lower than 100 when some use cases or checks didn't run.
+
+   | Level | When it applies |
+   |-------|-----------------|
+   | 🔴 High | Integration failure or production bad data from a systematic misunderstanding docs do not reliably correct |
+   | 🟠 Med-High | A scoped use case cannot be completed through the API |
+   | 🟡 Medium | Significant friction; the use case is still completable |
+   | ⚪ Low | Clarity issue; rarely affects outcomes |
 
    If the job failed, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same request again. A failed job can't be used in `priorReport`.
 
@@ -436,5 +445,5 @@ curl -sf "https://agent-server-production-a722.up.railway.app/jobs/$COMBINED_JOB
 ## Next steps
 
 - **Run it again after you fix things.** Start a new Review with `"priorReport": { "jobId": "<Review job ID>" }`. It keeps the earlier use cases and adds any new `resources` you send. This works only for a job that has a report.
-- **Check against your own conventions.** Send `guidelines`, a Markdown string of your API style rules, on the Review start.
+- **Check against your own style guide.** Send `guidelines`, your API style guide as a Markdown string, on the Review start.
 - **Watch your call count.** Each start uses one call from your plan, and a job that ends with no report gives the call back. `GET /balance` shows how many you have left. Fetching files and writing a fix file are free. Jobs stay on the host for 3 months.
