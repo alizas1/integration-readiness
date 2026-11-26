@@ -8,7 +8,7 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-11-22**.
+Written **2026-09-16**. Updated **2026-11-25**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
@@ -16,7 +16,7 @@ This file is how to call the host. The how-to that writes the report stays on th
 
 Host: `https://agent-server-production-a722.up.railway.app`
 
-Before the run starts, offer to make a sound when the process is complete. Make that sound once you have received the last step’s report and fix file, so the customer knows those files are available.
+Before the run starts, if you can play a sound on the customer's computer (for example, from a terminal), offer to make a sound when the process is complete. Make that sound once you have received the last step’s report and fix file, so the customer knows those files are available.
 
 ## If they don't have a key yet
 
@@ -44,7 +44,7 @@ Unknown or missing API key → `{ "error": "unauthorized" }` (401). Missing AI m
 
 Only jobs started with that API key can be read. Purchase an API key at https://trailcheck.dev/.
 
-Don't ask for either key in the chat. Ask the customer to set both as environment variables in their own terminal (`TRAILCHECK_API_KEY` and `MODEL_KEY`), and read them from there. If a key is pasted into the chat anyway, warn the customer about the security issues, but allow them to use it if they choose to. When the run is done, tell the customer to replace it: a new TrailCheck key from the app, and a new AI model key from their AI company.
+Don't ask for either key in the chat. Ask the customer to set both as environment variables in their own terminal (`TRAILCHECK_API_KEY` and `MODEL_KEY`), and read them from there. If a key is pasted into the chat anyway, warn the customer about the security issues, but allow them to use it if they choose to. Only in that case, when the run is done, tell the customer to replace the pasted key: a new TrailCheck key from the app, or a new AI model key from their AI company.
 
 ## What counts
 
@@ -74,7 +74,7 @@ The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 409 `{ "error": "job 
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "only Validation jobs have a path file" }`. 404 `{ "error": "not found" }` unknown `jobId`.
 
-Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score`, `scoreMax` (the maximum possible score) and `summary` when parsed. If the use cases couldn't be read, the job is still `"Completed"`. It has `useCaseScoresNote` and no `useCaseRecords`. `"Failed"`: `failureDetails` (a string: what happened, then what to do), `failureCode` and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `failureCode` gives the reason as a code. `fixFileStatus` is there when the report exists and there is no complete fix file: it says why and what to do, and `fixFileCode` gives the reason as a code (`writing`, `incomplete`, `refused`, `not_handed_in`, or a failure code). An incomplete fix file says so at the top, and calling Generate Fix File again goes on from where it stopped. The job is still `"Completed"`: the report is saved and the call is used. To get one, call Generate Fix File: `POST /jobs/<Job ID>/fix` with the same authentication and `aiModel` as a start. 202 `{ "jobId" }`, the same ID. Not counted. The job's status does not change: GET info until `fixFileStatus` is no longer `writing the fix file`, then GET the fix file. Calling it again while one is being written → `{ "error": "the fix file is already being written" }` (409). On a job still running → `{ "error": "job is in progress" }` (409). On a failed job → `{ "error": "this job failed, so it has no report to write a fix file from" }` (400). Sequence: `generate-fix` in [`arazzo.yaml`](./arazzo.yaml).
+Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score`, `scoreMax` (the maximum possible score) and `summary` when parsed. If the use cases couldn't be read, the job is still `"Completed"`. It has `useCaseScoresNote` and no `useCaseRecords`. `useCasesNote`: the use cases section had extra text. That text isn't in `useCaseRecords`. Read it in the report. `"Failed"`: `failureDetails` (a string: what happened, then what to do), `failureCode` and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `failureCode` gives the reason as a code. `fixFileStatus` is there when the report exists and there is no complete fix file: it says why and what to do, and `fixFileCode` gives the reason as a code (`writing`, `incomplete`, `refused`, `not_handed_in`, or a failure code). An incomplete fix file says so at the top, and calling Generate Fix File again goes on from where it stopped. The job is still `"Completed"`: the report is saved and the call is used. To get one, call Generate Fix File: `POST /jobs/<Job ID>/fix` with the same authentication and `aiModel` as a start. 202 `{ "jobId" }`, the same ID. Not counted. The job's status does not change: GET info until `fixFileStatus` is no longer `writing the fix file`, then GET the fix file. Calling it again while one is being written → `{ "error": "the fix file is already being written" }` (409). On a job still running → `{ "error": "job is in progress" }` (409). On a failed job → `{ "error": "this job failed, so it has no report to write a fix file from" }` (400). Sequence: `generate-fix` in [`arazzo.yaml`](./arazzo.yaml).
 
 `GET /jobs` lists the key's jobs, newest first: `id`, `type`, `title`, `status`, `startedAt`, `finishedAt`, `score`. Filters: `type`, `status`, `limit`. The rest of a job's details are at `GET /jobs/<Job ID>/info`. The report, fix file and path file are at `GET /jobs/<Job ID>/report`, `/fix` and `/path`.
 
@@ -120,7 +120,7 @@ For a Combined job (`POST /combine`), list the jobs to join: at least one Review
 
 HTML, JSON, YAML, Markdown, and plain text are read. PDF, image, audio, video, and `octet-stream` are not.
 
-A Review reads only the hosts in `resources`, plus hosts that an llms.txt in `resources` links to. A link it finds to any other host, for example GitHub, is not read. Send a URL on each host you need: every docs host, the spec host, the sample repo.
+A Review reads only the hosts in `resources`, plus hosts that an llms.txt in `resources` links to. A link it finds to any other host, for example GitHub, is not read. Send a URL on each host you need: every docs host, the spec host, the sample repo. Redirects are followed, up to 5, as long as the host was included in resources or in an llms.txt in resources. If a page redirects to a site that isn't in resources, the page it redirects to is skipped, like any other link to that site.
 
 A job reads up to 85% of the model's limit (Claude keys). When it gets there, it stops reading and writes the report with what it has. Pages not read are listed under What We Didn't Review. A job works in steps, and at every step everything read so far is sent again, billed to the AI model key each time. If the customer sends a large spec or many pages, tell them this before you start. With other companies' keys, a job that reads too much fails, and the call is given back.
 
@@ -136,4 +136,4 @@ Each entry in `resources` is a string. An object is left out of the job. `resour
 
 A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400). A `priorReport` that names a failed job is refused, because a failed job has no report (400). When a job fails, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same request again.
 
-Optional on a Review: `guidelines`, a markdown string of their API conventions. The review checks the API against that file and against the checklist. Omit it when they have none. On a run-again, omitting it keeps the guidelines from the prior Review when that job had them. A string on this start is the file for this job. Send it on `POST /review`. On Validation or Combined the host returns `{ "error": "send guidelines on the Review start" }` (400). A value that is not a string returns `{ "error": "guidelines must be markdown text" }` (400).
+Optional on a Review: `guidelines`, their API style guide as a markdown string. The review checks the API against that file and against the checklist. Omit it when they have none. On a run-again, omitting it keeps the guidelines from the prior Review when that job had them. A string on this start is the file for this job. Send it on `POST /review`. On Validation or Combined the host returns `{ "error": "send guidelines on the Review start" }` (400). A value that is not a string returns `{ "error": "guidelines must be markdown text" }` (400).

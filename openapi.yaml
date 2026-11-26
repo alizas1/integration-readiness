@@ -612,6 +612,7 @@ components:
           type: string
           description: anthropic / claude, openai / chatgpt / gpt, deepseek, xai / grok, mistral, groq, google / gemini. Omit and the host guesses from the key.
     UseCases:
+      description: Up to 4. If you send more, only the first 4 are used.
       oneOf:
         - type: object
           additionalProperties: false
@@ -681,7 +682,7 @@ components:
         guidelines:
           type: string
           description: >
-            Review only. Markdown of their API conventions. The review checks the API
+            Review only. Markdown of their API style guide. The review checks the API
             against this file and against the checklist. Omit when they have none.
             A run-again that omits it uses the guidelines from the prior Review when
             that job had them. A string on this start is the file for this job.
@@ -820,7 +821,7 @@ components:
           description: Earlier job ids this run started from. Omitted when this job did not start from one.
         useCaseRecords:
           type: array
-          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report (see useCaseScoresNote). id is an empty string.
+          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report (see useCaseScoresNote). Each use case's score counts only the findings that affect it. The overall score counts every finding, so it can be lower than every use case's score. id is an empty string.
           items:
             type: object
             required: [id, title, goal, steps, provided, findingNumbers, score]
@@ -851,6 +852,9 @@ components:
               outcome:
                 type: string
                 description: Present when the report gives one.
+        useCasesNote:
+          type: string
+          description: Present when the use cases section had text that isn't in useCaseRecords. Always `The use cases section had extra text that isn't in this list. Read it in the report.`
         useCaseScoresNote:
           type: string
           description: >-
