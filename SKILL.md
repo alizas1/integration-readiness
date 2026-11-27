@@ -8,11 +8,11 @@ description: >
 
 # TrailCheck API
 
-Written **2026-09-16**. Updated **2026-11-25**.
+Written **2026-09-16**. Updated **2026-11-26**.
 
 How an API key customer’s agent calls the host. Contract: [`openapi.yaml`](./openapi.yaml). Sequences and handoffs: [`arazzo.yaml`](./arazzo.yaml).
 
-This file is how to call the host. The how-to that writes the report stays on the host. The caller gets `report.md` and `fix.md` (and `path.md` for Validation flows).
+This file explains how to call the TrailCheck API. The review method runs on the server, so the caller needs nothing else to run a check. Each job returns its file: the report (`report.md`) from a Review, Validation or Combined job, the path file (`path.md`) from a Validation, and the fix file (`fix.md`) from a Fix job.
 
 Host: `https://agent-server-production-a722.up.railway.app`
 
@@ -28,9 +28,12 @@ Ask these questions one at a time. Wait for each answer before asking the next. 
 
 1. What should the review cover? For example your API spec, llms.txt and/or docs site, the getting started and authentication pages, the guide for each use case, and sample code. Provide links or files. If I can open your project, I can look in it to find them. The review reads only the sites in the links you send. Links to other sites are skipped, so send a link for each site you need.
 
-2. What kind of review should I run? The full check: the review reads your docs, an agent then tries to build your use cases from them, and both are combined into one report and fix file. Uses 3 calls. Or something else?
+2. What kind of review should I run?
+   - The full check plus fix file: the review reads your docs, an agent then tries to build your use cases from them and returns one report with the findings from both, and a fix file is written from that report. Uses 3 calls. Best if you can apply fixes yourself.
+   - The full check without a fix file: same as above but doesn't write the fix file. Uses 2 calls. Best if you can't apply fixes yourself.
+   - Something else?
 
-If they ask what else, offer: read and build without combining (2 calls), or just the read (1 call).
+If they ask what else, offer: the review plus a fix file, without the build (2 calls), or just the review (1 call).
 
 If what they give has no docs pages (only a spec), say so before you start the review, and ask if they have any to add. Tell them the report will count it as a finding.
 
@@ -48,9 +51,9 @@ Don't ask for either key in the chat. Ask the customer to set both as environmen
 
 ## What counts
 
-Each accepted start counts as one call: review, validation, or combine, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, you aren't charged a call for that run. A saved report counts as one call. Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, `remainingCalls` in the 202 says how many calls are still available. When the server refuses the start, the status is 402, and the response has `remainingCalls` when the server knows that number. Calls to fetch a finished job and write a fix file do not count toward the call quota.
+Each accepted start counts as one call: review, validation, fix file, or combine, including a rerun and a start again from a failed job. The count is decremented immediately when a call is accepted, but if the job ends with no report/fix file, you aren't charged a call for that run. Each successful report or fix file generation costs one call. Each call is one third of the review + cold build + fix file as sold in the app (1 review + cold build + fix file = 1 review call, 1 build validation call, and 1 fix file call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. Two starts don't use a call: a Fix job that continues a `Partial` one, and the first `/combine` that names a Validation whose merge didn't finish (see `mergeNote`). The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, `remainingCalls` in the 202 says how many calls are still available. It's left out when the start didn't use a call. When the server refuses the start, the status is 402, and the response has `remainingCalls` when the server knows that number. Calls to fetch a finished job do not count toward the call quota.
 
-Calls left: `GET /balance`, with the same `Authorization` header. Checking doesn't use a call. 200 `{ "remainingCalls": 13, "used": 2, "included": 15, "paidThrough": "2026-12-15" }`. Job info has `callUsed`: `false` when the job ended with no report and the call was given back.
+Calls left: `GET /balance`, with the same `Authorization` header. Checking doesn't use a call. 200 `{ "remainingCalls": 13, "used": 2, "included": 15, "paidThrough": "2026-12-15" }`. Job info has `callUsed`: `false` when the job ended with no report/fix file and the call was given back, or when the start didn't use a call.
 
 **Note:** Keep the `jobId` from the 202. Every start POST is a new job.
 
@@ -58,27 +61,33 @@ Calls left: `GET /balance`, with the same `Authorization` header. Checking doesn
 
 Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
 
-Typical order: Review → Validation → Combined. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-combined`. Pieces: `review`, `validation`, `combined`, `combine-jobs`, `run-again`, `check-and-fetch`. The Combined call is intended for jobs about the same use cases, but the host does not check this. Pass one or more Review jobs, plus any related Validation jobs. Unrelated jobs will combine to create a misleading report.
-
-If the customer wants to save calls, they can skip the Combined step. Often the Validation report and fix file are enough. A finding that appeared only in the Review is occasionally missing from the Validation outputs.
+Typical order: Review → Validation → fix file. A Validation that starts from a Review returns the combined report: the Review's findings and the Validation's, in one report. A Fix job started from the Validation then writes one fix file for both. That workflow in [`arazzo.yaml`](./arazzo.yaml) is `review-then-validation-then-fix`. Pieces: `review`, `validation`, `generate-fix`, `fetch-fix`, `combined`, `combine-jobs`, `run-again`, `check-and-fetch`. Combine is an optional call available for non-standard flows: use it to join jobs yourself, for example when use cases for the same resources were split into two Reviews, or into two Validations from one Review. The Combined call is intended for jobs about the same resources, but the host does not check this. Pass one or more Review jobs, plus any related Validation jobs. Unrelated jobs will combine to create a misleading report.
 
 ## What comes back
 
-Any start can include `notifyEmail`: an email address to receive a notification when the job ends. The email is sent from info@trailcheck.dev with the job status, the score or the reason the job failed, and how to get the resulting files. Files are not attached. Non-email addresses trigger an error (400 `notifyEmail must be an email address`). The address appears in the job info. Generate Fix File doesn't send an email.
+Any start (`POST /review`, `/validation`, `/fix` or `/combine`) can include `notifyEmail`: an email address to receive a notification when the job ends. The email is sent from info@trailcheck.dev with the job status, the score or the reason the job failed, and how to get the resulting files. Files are not attached. Non-email addresses trigger an error (400 `notifyEmail must be an email address`). The address appears in the job info.
 
-The report (`GET /jobs/<Job ID>/report`): 200 the report. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "this job failed, so it has no report" }`.
+The report (`GET /jobs/<Job ID>/report`): 200 the report. A Validation that started from a Review returns the combined report, unless its job info has `mergeNote`. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "this job failed, no report available" }`. 404 `{ "error": "Fix job ID passed for a report. The report is on job <Job ID>." }`.
 
 When links were skipped because their sites weren't in `resources`, the report lists them under Skipped links in What We Didn't Review. Tell the customer which sites were skipped, and ask whether it's worth starting a new Review that includes them. It uses a call.
 
-The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. 409 `{ "error": "job is in progress" }` or `{ "error": "the fix file is currently being written" }`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "no fix file: see fixFileStatus in the job info" }`: `fixFileStatus` says why there is no fix file and what to do, and `fixFileCode` gives the reason as a code. The report is saved and the job is `"Completed"`.
+The fix file (`GET /jobs/<Job ID>/fix`): 200 the fix file. On a `Partial` job, it's the part that was written, and the top of the file says where it stops and how to generate the rest. 409 `{ "error": "job is in progress" }`: wait. 404 `{ "error": "not found" }` unknown `jobId`. 404 `{ "error": "this job failed, no fix file available" }`. 404 on a Review, Validation or Combined job: `{ "error": "Review job ID passed for a fix file. The fix file is on Fix job <Job ID>." }`, naming the latest Fix job made from it; `{ "error": "Review job ID passed for a fix file. No fix file was made from this job yet: call POST /fix." }` when none was made; `{ "error": "Review job ID passed for a fix file. This job failed, so no fix file can be made from it." }` when that job failed.
 
 The path file on Validation (`GET /jobs/<Job ID>/path`): 200 the path file. 409 `{ "error": "job is in progress" }` while `"In progress"`: wait. 404 `{ "error": "only Validation jobs have a path file" }`. 404 `{ "error": "not found" }` unknown `jobId`.
 
-Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score`, `scoreMax` (the maximum possible score) and `summary` when parsed. If the use cases couldn't be read, the job is still `"Completed"`. It has `useCaseScoresNote` and no `useCaseRecords`. `useCasesNote`: the use cases section had extra text. That text isn't in `useCaseRecords`. Read it in the report. `"Failed"`: `failureDetails` (a string: what happened, then what to do), `failureCode` and `finishedAt`. 404 `{ "error": "not found" }`: this `jobId` is unknown. `failureCode` gives the reason as a code. `fixFileStatus` is there when the report exists and there is no complete fix file: it says why and what to do, and `fixFileCode` gives the reason as a code (`writing`, `incomplete`, `refused`, `not_handed_in`, or a failure code). An incomplete fix file says so at the top, and calling Generate Fix File again goes on from where it stopped. The job is still `"Completed"`: the report is saved and the call is used. To get one, call Generate Fix File: `POST /jobs/<Job ID>/fix` with the same authentication and `aiModel` as a start. 202 `{ "jobId" }`, the same ID. Not counted. The job's status does not change: GET info until `fixFileStatus` is no longer `writing the fix file`, then GET the fix file. Calling it again while one is being written → `{ "error": "the fix file is already being written" }` (409). On a job still running → `{ "error": "job is in progress" }` (409). On a failed job → `{ "error": "this job failed, so it has no report to write a fix file from" }` (400). Sequence: `generate-fix` in [`arazzo.yaml`](./arazzo.yaml).
+Job info (`GET /jobs/<Job ID>/info`): 200 JSON. Files are not in this call. 404 `{ "error": "not found" }`: this `jobId` is unknown. `"In progress"`: wait once a minute. `"Completed"`: `finishedAt`, `score`, `scoreMax` (the maximum possible score) and `summary` when parsed. `"Partial"`: a Fix job whose fix file stops partway. `partialFixDetails` says where. A Fix job started from it generates the rest, without using a call. `"Failed"`: `failureDetails` (a string: what happened, then what to do), `failureCode` (the reason as a code) and `finishedAt`. On a Fix job, `failureCode` can also be `refused` (the fix file check refused a line) or `not_handed_in` (the AI didn't hand in a fix file). If the use cases couldn't be read, the job is still `"Completed"`. It has `useCaseScoresNote` and no `useCaseRecords`. `useCasesNote`: the use cases section had extra text. That text isn't in `useCaseRecords`. Read it in the report. Each entry in `useCaseRecords` has an `id`: `uc-1`, `uc-2`, and so on. A job started from an earlier job keeps that job's IDs for the same use cases. Send them in `useCases.ids` to choose which use cases a new job checks.
 
-`GET /jobs` lists the key's jobs, newest first: `id`, `type`, `title`, `status`, `startedAt`, `finishedAt`, `score`. Filters: `type`, `status`, `limit`. The rest of a job's details are at `GET /jobs/<Job ID>/info`. The report, fix file and path file are at `GET /jobs/<Job ID>/report`, `/fix` and `/path`.
+Job info also shows how a job connects to others, so you can find the related files:
 
-`scoreStatus` is present only when the score in the report did not match a count based on the findings. It returns a string that names both numbers, e.g. `The report says score: 70, but counting the findings adds up to 76.` `score` and `report.md` then uses that second number (76 in that string).
+- `priorReportJobIds`: the earlier reports this job was made from. On a Validation from a Review, the Review. On a Combined job, every job it joined. On a rerun, the job it reran. On a Fix job, the report its fix file was made from.
+- `includesReviewFindings`: `true` when a Validation's report already includes the Review's findings. You don't need to call `/combine`.
+- `mergeNote`: returned when the Validation's report doesn't include the Review's findings. To get them in one report, call `/combine` with the Validation and the Review. The first `/combine` after this is free. The note says: `Review and Validation steps both completed successfully, but the reports didn't merge as expected. To get the combined report, call POST /combine with both job IDs. It's free this time.`
+- `fixJobIds`: the fix files made from this report, oldest first. Get the newest with `GET /jobs/<last ID>/fix`.
+- `continuedFromJobId`: this job picks up from an earlier one. It finishes a partial fix file, or retries a job that failed.
+
+`GET /jobs` lists the key's jobs, newest first: `id`, `type`, `title`, `status`, `startedAt`, `finishedAt`, `score`. Filters: `type`, `status`, `limit`. `type` can be `Review`, `Validation`, `Combined` or `Fix`, and `status` can be `In progress`, `Completed`, `Failed` or `Partial`. The rest of a job's details are at `GET /jobs/<Job ID>/info`. The report file is at `GET /jobs/<Job ID>/report`, the fix file is at `GET /jobs/<Job ID>/fix`, and the path file is at `GET /jobs/<Job ID>/path`.
+
+`scoreStatus` is present in two cases. When the score in the report did not match a count based on the findings, it names both numbers, e.g. `The report says score: 70, but counting the findings adds up to 76.` `score` and `report.md` then use that second number (76 in that string). When the server couldn't read the report's findings, it's `The server couldn't read the report's findings, so the score wasn't confirmed.` The job is still `"Completed"`, and `score` is the number the report gives, when it gives one.
 
 ## What you send
 
@@ -103,13 +112,13 @@ For a Validation job (`POST /validation`) that builds on a Review job, name that
 }
 ```
 
-It uses the Review job's resources and use cases. If the customer already ran a Review job on the same API, always send `priorReport`. Without it, the Validation job might not use the same use cases as the Review job.
+It uses the Review job's resources and use cases, and returns the combined report: the Review's findings and the Validation's, in one report. With no `title`, it uses the Review's. If the customer already ran a Review job on the same API, always send `priorReport`. Without it, the Validation job might not use the same use cases as the Review job.
 
 A Validation job can also start without a Review job: send `resources` the same way as for a Review job. It finds its own use cases.
 
-To run the same Validation job again, put its job ID in `priorReport.jobId`.
+To run the same Validation job again, put its job ID in `priorReport.jobId`. A Validation started from a Validation that has `mergeNote`, or from a Combined job, may leave out findings only the Review had. To include any Review findings into the new report, call `/combine` with the Review and the new Validation.
 
-For a Combined job (`POST /combine`), list the jobs to join: at least one Review job, plus any Validation jobs:
+For a Combined job (`POST /combine`), list the jobs to join: at least one Review job, plus any Validation jobs. If a Validation's report already includes the Review's findings, they aren't counted twice.
 
 ```json
 {
@@ -117,6 +126,29 @@ For a Combined job (`POST /combine`), list the jobs to join: at least one Review
   "aiModel": { "primaryName": "<model name>", "key": "<AI model key>" }
 }
 ```
+
+For a Fix job (`POST /fix`), name the job whose report the fix file should be based on: a Review, Validation or Combined job:
+
+```json
+{
+  "priorReport": { "jobId": "<Review, Validation or Combined job ID>" },
+  "aiModel": { "primaryName": "<model name>", "key": "<AI model key>" }
+}
+```
+
+It takes only `priorReport`, `aiModel` and `notifyEmail`. Its `title` is the title of that job, and with no `notifyEmail` it uses that job's address. To finish a `Partial` fix file, name the Partial Fix job: the new one generates the rest, without using a call. Naming a Failed or Completed Fix job writes a new fix file from the same report, and uses a call.
+
+Any Review or Validation start can choose which use cases to check, in `useCases`:
+
+```json
+"useCases": { "specified": ["Send a payment"], "max": 2, "ids": ["uc-1"] }
+```
+
+- `specified`: use cases by title. Up to 4.
+- `max`: how many use cases to check in all, 1 to 4. Without it, defaults to 4.
+- `ids`: use case IDs from the job in `priorReport.jobId`, from its `useCaseRecords`. Send `priorReport.jobId` with it.
+
+The ones named in `ids` and `specified` are checked first, and the rest are chosen up to `max`. With `ids` and no `max`, only those are checked. A Validation from a Review that checks only some use cases still includes all the Review's findings, and lists the use cases it didn't check as not run.
 
 HTML, JSON, YAML, Markdown, and plain text are read. PDF, image, audio, video, and `octet-stream` are not.
 
@@ -132,8 +164,8 @@ Anything else must be turned into one of these:
 - A spec that exists only as an internal file: file text or a string.
 - A screenshot or diagram: written out in words as Markdown. The image file itself is not read.
 
-Each entry in `resources` is a string. An object is left out of the job. `resources` that isn't a string or a list → `{ "error": "resources must be a string or list of strings" }` (400). A field that isn't listed in [`openapi.yaml`](./openapi.yaml) → `{ "error": "unknown field: <name>" }` (400), before a call is counted. A `priorReport` that names a job still running → `{ "error": "job is in progress" }` (409).
+Each entry in `resources` is a string. An object is left out of the job. `resources` that isn't a string or a list → `{ "error": "resources must be a string or list of strings" }` (400). A field that isn't listed in [`openapi.yaml`](./openapi.yaml) → `{ "error": "unknown field: <name>" }` (400), before a call is counted. A `priorReport` that names a job still running → `{ "error": "job is in progress" }` (409). A failed job of another kind → for example `Review job <Job ID> failed, so it has no report to build on. To start it again, send POST /review with this job ID as priorReport, then start the validation from the new review.` (400). On `POST /fix`: no `priorReport.jobId` → `jobId missing - send priorReport.jobId of the report the fix file will be based on` (400); a failed Review, Validation or Combined job → `this job failed, so it has no report to write a fix file from` (400); a Fix job already running for that report → `the fix file is already being written` (409). On `useCases`, all 400: `useCases.max must be a whole number from 1 to 4`; `useCases.ids must be a list of use case IDs`; `when specifying useCases.ids, priorReport.jobId must also be passed`; `use case uc-9 couldn't be found in job <Job ID>`; more use cases named than `max` → `3 use cases specified in useCases.ids and useCases.specified but useCases.max is 2`.
 
-A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400). A `priorReport` that names a failed job is refused, because a failed job has no report (400). When a job fails, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then send the same request again.
+A start needs either `resources` or `priorReport`. If both are missing, the host returns `{ "error": "at least one resource or prior report is required" }` (400). A start can name a failed job in `priorReport.jobId` to start it again. It copies the failed job's resources, use case titles, title, style guide, notify email, and the job it started from, so a Validation from a Review still starts from that Review. Anything sent on the new start replaces what's copied. The new start sets its own limit: send `useCases.max` to choose how many use cases it checks. Without it, it checks up to 4. It must be the same kind of start as the failed job, and it uses a call. On `/combine`, send the failed job's ID as the only entry in `priorReport.jobIds`. When a job fails, `failureDetails` says what went wrong and what to fix. Apply the recommended fixes, then start it again.
 
 Optional on a Review: `guidelines`, their API style guide as a markdown string. The review checks the API against that file and against the checklist. Omit it when they have none. On a run-again, omitting it keeps the guidelines from the prior Review when that job had them. A string on this start is the file for this job. Send it on `POST /review`. On Validation or Combined the host returns `{ "error": "send guidelines on the Review start" }` (400). A value that is not a string returns `{ "error": "guidelines must be markdown text" }` (400).

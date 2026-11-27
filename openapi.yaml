@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
   title: TrailCheck API
-  version: "2026-10-14"
+  version: "2026-11-27"
   description: |
-    TrailCheck's APIs show you exactly where agents gets stuck completing your API workflows, and gives your coding agent the fixes.
-    The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases, then combine: combines the findings from the earlier steps into one report.
+    TrailCheck's API shows you exactly where agents get stuck completing your API workflows, and gives your coding agent the fixes.
+    The check is made up of 3 calls: review: reads your resources like an integrator, then build validation: builds real use cases and returns one report with the review's findings and its own, then fix: writes the fix file from that report. Combine is an optional call intended for more complex flows.
     Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
     A failure on one call does not affect the outputs from earlier calls.
     
     This file is the machine-readable contract for caller methods
-    (health, three starts, GET the job list, GET job info and files, and Generate Fix File (POST to write the fix file on a job that already has a report)).
+    (health, four starts, GET the job list, GET job info and files).
     Keep the `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     Jobs and their files stay on the host for 3 months.
 
@@ -28,13 +28,7 @@ info:
     A ChatGPT login is not a key. A Cursor key cannot run this loop.
     If you omit `aiModel.company` the host guesses from the key.
 
-    Each accepted start counts as one call: review, validation, or combine, including a rerun. The count is decremented immediately when a call is accepted, but if the job ends with no report, the count returns to the original number. 
-    A saved report counts as one call. 
-    Each call is one third of the review + cold build as sold in the app (1 review + cold build = 1 review call, 1 build validation call, and 1 combine call). 
-    However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. 
-    The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, the response says how many calls are still available. 
-    When the server refuses the start, the status is 402, and the response says how many calls are still available when it knows that number. 
-    Calls to fetch a finished job and write a fix file do not count toward the call quota.
+    Each accepted start counts as one call: review, validation, fix file, or combine, including a rerun and a start again from a failed job. The count is decremented immediately when a call is accepted, but if the job ends with no report/fix file, you aren't charged a call for that run. Each successful report or fix file generation costs one call. Each call is one third of the review + cold build + fix file as sold in the app (1 review + cold build + fix file = 1 review call, 1 build validation call, and 1 fix file call). However the customer can use the 15 available calls in any ratio. A top-up adds 3 calls and does not change how many have been used or the paid-through date. Two starts don't use a call: a Fix job that continues a `Partial` one, and the first `/combine` that names a Validation whose merge didn't finish (see `mergeNote`). The server refuses the start when there are no calls left, or the paid-through date has passed. When the server accepts the start, `remainingCalls` in the 202 says how many calls are still available. It's left out when the start didn't use a call. When the server refuses the start, the status is 402, and the response has `remainingCalls` when the server knows that number. Calls to fetch a finished job do not count toward the call quota.
 servers:
   - url: https://agent-server-production-a722.up.railway.app
     description: Live host
@@ -116,7 +110,7 @@ paths:
       tags: [Starts]
       summary: Start a Validation
       description: |
-        Builds on a Review job, or runs an earlier Validation job again, when `priorReport` names it. That job must have `report.md`. Without `priorReport`: send `resources`. The Validation job finds its own use cases.
+        Builds on a Review job, or runs an earlier Validation job again, when `priorReport` names it. When a Review job ID is specified in `priorReport.jobId`, it returns the combined report: the Review's findings and the Validation's, in one report. When no `title` is specified and a Review job ID is specified, this call pulls the title from the Review. The specified job must have `report.md`, or be a failed Validation to start again. Without `priorReport`: send `resources`. The Validation job finds its own use cases.
         Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
       operationId: postValidation
       security:
@@ -135,6 +129,16 @@ paths:
                 value:
                   priorReport:
                     jobId: "00000000-0000-0000-0000-000000000000"
+                  aiModel:
+                    primaryName: claude-sonnet-5-5
+              someUseCases:
+                summary: Check 2 of the Review's use cases
+                value:
+                  priorReport:
+                    jobId: "00000000-0000-0000-0000-000000000000"
+                  useCases:
+                    max: 2
+                    ids: [uc-1, uc-2]
                   aiModel:
                     primaryName: claude-sonnet-5-5
       responses:
@@ -159,7 +163,7 @@ paths:
     post:
       tags: [Starts]
       summary: Start a Combined report
-      description: Needs one or more Review jobs, plus any Validation jobs, each with `report.md`.
+      description: Joins the reports of two or more jobs into one combined report. It's an optional call intended for more complex flows, for example when use cases for the same resources were split into two Reviews, or into two Validations from one Review. Needs one or more Review jobs, plus any Validation jobs, each with `report.md`. If a Validation's report already includes the Review's findings, they aren't counted twice.
       operationId: postCombined
       security:
         - AccessApiKey: []
@@ -198,13 +202,57 @@ paths:
         "503":
           $ref: "#/components/responses/ErrorJson"
 
+  /fix:
+    post:
+      tags: [Starts]
+      summary: Start a Fix job
+      description: |
+        Writes a fix file from the report of the job named in `priorReport.jobId`: a Review, Validation or Combined job. It takes only `priorReport`, `aiModel` and `notifyEmail`. Its `title` is the title of that job, and with no `notifyEmail` it uses the prior report job's address. To finish a `Partial` fix file, name the Partial Fix job: the new one generates the rest, without using a call. Naming a Failed or Completed Fix job writes a new fix file from the same report, and uses a call. The fix file is at `GET /jobs/{jobId}/fix`, with the new job's ID.
+      operationId: postFix
+      security:
+        - AccessApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XModelKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FixStart"
+            examples:
+              fromReport:
+                summary: A fix file from a report
+                value:
+                  priorReport:
+                    jobId: "00000000-0000-0000-0000-000000000000"
+                  aiModel:
+                    primaryName: claude-sonnet-5-5
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedJob"
+        "400":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`jobId missing - send priorReport.jobId of the report the fix file will be based on`, or `this job failed, so it has no report to write a fix file from`."
+        "401":
+          $ref: "#/components/responses/ErrorJson"
+        "402":
+          $ref: "#/components/responses/CallsRefused"
+        "404":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`not found`: `priorReport` names a job that doesn't exist."
+        "409":
+          $ref: "#/components/responses/ErrorJson"
+          description: "`job is in progress`: the named job is still running. `the fix file is already being written`: a Fix job for that report is running."
+        "503":
+          $ref: "#/components/responses/ErrorJson"
+
   /jobs:
     get:
       tags: [Jobs]
       summary: List jobs
       description: |
         The jobs this API key started, newest first. Each entry has id, type, title, status, startedAt, finishedAt and score.
-        The rest of a job's details are at GET /jobs/{jobId}/info. The report, fix file and path file are at GET /jobs/{jobId}/report, /fix and /path.
+        The rest of a job's details are at GET /jobs/{jobId}/info. The report file is at GET /jobs/{jobId}/report, the fix file is at GET /jobs/{jobId}/fix, and the path file is at GET /jobs/{jobId}/path.
         An empty array means this API key has no jobs, or none match the filters.
       operationId: listJobs
       security:
@@ -215,13 +263,14 @@ paths:
           required: false
           schema:
             type: string
-            enum: [Review, Validation, Combined]
+            enum: [Review, Validation, Combined, Fix]
         - name: status
           in: query
           required: false
+          description: Partial is only for a Fix job whose fix file stops partway.
           schema:
             type: string
-            enum: [In progress, Completed, Failed]
+            enum: [In progress, Completed, Failed, Partial]
         - name: limit
           in: query
           required: false
@@ -265,7 +314,7 @@ paths:
     get:
       tags: [Jobs]
       summary: Job info
-      description: Poll once a minute until status is Completed or Failed. There is no rate limit.
+      description: Poll once a minute until status is Completed, Partial or Failed. There is no rate limit.
       operationId: getJobInfo
       security:
         - AccessApiKey: []
@@ -300,8 +349,35 @@ paths:
                     title: example API
                     startedAt: "2026-09-15T12:00:00.000Z"
                     finishedAt: "2026-09-15T12:05:00.000Z"
-                    failureDetails: "The report was cut off at the 128,000-token reply limit for claude-sonnet-5-5 before it was handed in. The AI's thinking counts toward that limit. To get a report, start a new job with fewer use cases or fewer pages, or split the use cases across two jobs. Then call Combine with both jobs, plus any Validations. The largest pages this job read: https://example.com/openapi.json (1,124 KB, sent); https://example.com/docs/auth (360 KB, sent); https://example.com/docs/guide (99 KB, opened by following a link). You weren't charged a call for this run."
+                    failureDetails: "The report was cut off at the 128,000-token reply limit for claude-sonnet-5-5 before it was handed in. You weren't charged a call for this run. To get a report, start 2 smaller reviews, each with this job ID as priorReport and 2 use cases in useCases.max. You can specify the specific use cases in useCases.specified to prevent overlap and make sure all are tested. Then call Combine with both reviews. Or try again with fewer resources. The largest pages this job read: https://example.com/openapi.json (1,124 KB, sent); https://example.com/docs/auth (360 KB, sent); https://example.com/docs/guide (99 KB, opened by following a link)."
                     failureCode: reply_limit
+                mergedValidation:
+                  summary: Validation that includes the Review's findings
+                  value:
+                    id: "00000000-0000-0000-0000-000000000002"
+                    status: Completed
+                    type: Validation
+                    title: example API
+                    startedAt: "2026-09-15T12:30:00.000Z"
+                    finishedAt: "2026-09-15T12:50:00.000Z"
+                    score: 78
+                    scoreMax: 92
+                    priorReportJobIds: ["00000000-0000-0000-0000-000000000000"]
+                    includesReviewFindings: true
+                    fixJobIds: ["00000000-0000-0000-0000-000000000003"]
+                partialFix:
+                  summary: Partial Fix job
+                  value:
+                    id: "00000000-0000-0000-0000-000000000003"
+                    status: Partial
+                    type: Fix
+                    title: example API
+                    startedAt: "2026-09-15T13:00:00.000Z"
+                    finishedAt: "2026-09-15T13:10:00.000Z"
+                    priorReportJobIds: ["00000000-0000-0000-0000-000000000002"]
+                    partialFixDetails:
+                      note: The fix file was only partially generated. It stops before task #7.
+                      stopsBeforeTask: 7
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
@@ -326,7 +402,7 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if the ID is unknown; `this job failed, so it has no report`"
+          description: "`not found` if the ID is unknown; `this job failed, no report available`; `Fix job ID passed for a report. The report is on job <Job ID>.`"
           content:
             application/json:
               schema:
@@ -349,7 +425,7 @@ paths:
         - $ref: "#/components/parameters/JobId"
       responses:
         "200":
-          description: Fix file exists
+          description: "A fix file has been generated successfully. If this Fix job's status is `Partial`, the file stops partway. See the beginning of the file for where it stops and how to generate the rest."
           content:
             text/markdown:
               schema:
@@ -357,60 +433,17 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorJson"
         "404":
-          description: "`not found` if the ID is unknown; `no fix file: see fixFileStatus in the job info` when the job finished with no fix file. GET does not write the file."
+          description: "`not found` if the ID is unknown; `this job failed, no fix file available`; on a Review, Validation or Combined job: `Review job ID passed for a fix file. The fix file is on Fix job <Job ID>.`, naming the latest Fix job made from it; `Review job ID passed for a fix file. No fix file was made from this job yet: call POST /fix.` when none was made; `Review job ID passed for a fix file. This job failed, so no fix file can be made from it.` when that job failed."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
-          description: "`job is in progress`, or `the fix file is currently being written`: wait and ask again"
+          description: "`job is in progress`: wait and ask again"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
-    post:
-      tags: [Jobs]
-      summary: Generate Fix File
-      description: |
-        The job must already have `report.md`. Writes `fix.md` on this same job.
-        202 `{ "jobId" }` is that same ID. The job's status does not change: while the fix file is written, `fixFileStatus` is `writing the fix file`. GET info until it is no longer that, then GET the fix file.
-        If `fix.md` is already there, this run overwrites it.
-        Job In progress → `{ "error": "job is in progress" }` (409).
-        A fix file already being written → `{ "error": "the fix file is already being written" }` (409).
-        A failed job → `{ "error": "this job failed, so it has no report to write a fix file from" }` (400).
-        Customer body needs `aiModel` (`primaryName` required) the same as a start.
-        `.md` on the path still works.
-      operationId: generateFixFile
-      security:
-        - AccessApiKey: []
-      parameters:
-        - $ref: "#/components/parameters/JobId"
-        - $ref: "#/components/parameters/XModelKey"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GenerateFixStart"
-            examples:
-              customer:
-                summary: Same authenticate as a start.
-                value:
-                  aiModel:
-                    primaryName: claude-sonnet-5-5
-      responses:
-        "202":
-          $ref: "#/components/responses/AcceptedJob"
-        "400":
-          $ref: "#/components/responses/ErrorJson"
-        "401":
-          $ref: "#/components/responses/ErrorJson"
-        "404":
-          $ref: "#/components/responses/ErrorJson"
-        "409":
-          $ref: "#/components/responses/ErrorJson"
-        "503":
-          $ref: "#/components/responses/ErrorJson"
 
   /jobs/{jobId}/path:
     get:
@@ -567,15 +600,24 @@ components:
         - error: could not tell which company this key is for
         - error: two different ai models were sent - resend with one model.
         - error: send priorReport.jobIds with one or more Review jobs, plus any Validation jobs
-        - error: "job 00000000-0000-0000-0000-000000000000 failed, so it has no report and can't be run again. Send the same `POST /review` request again, with its resources."
-        - error: job 00000000-0000-0000-0000-000000000000 failed, so it has no report to build on. Run that job again first.
+        - error: "Review job 00000000-0000-0000-0000-000000000000 failed, so it has no report to build on. To start it again, send POST /review with this job ID as priorReport, then start the validation from the new review."
         - error: "Anthropic doesn't have the model claude-sonet-5-5. It may be retired or misspelled. Send a current model name in aiModel.primaryName (and cheapName)."
         - error: not found
         - error: "unknown field: usecases"
         - error: resources must be a string or list of strings
-        - error: this job failed, so it has no report
-        - error: "no fix file: see fixFileStatus in the job info"
+        - error: useCases.max must be a whole number from 1 to 4
+        - error: useCases.ids must be a list of use case IDs
+        - error: when specifying useCases.ids, priorReport.jobId must also be passed
+        - error: use case uc-9 couldn't be found in job 00000000-0000-0000-0000-000000000000
+        - error: 3 use cases specified in useCases.ids and useCases.specified but useCases.max is 2
+        - error: this job failed, no report available
+        - error: Fix job ID passed for a report. The report is on job 00000000-0000-0000-0000-000000000000.
+        - error: this job failed, no fix file available
+        - error: Review job ID passed for a fix file. The fix file is on Fix job 00000000-0000-0000-0000-000000000000.
+        - error: "Review job ID passed for a fix file. No fix file was made from this job yet: call POST /fix."
+        - error: Review job ID passed for a fix file. This job failed, so no fix file can be made from it.
         - error: only Validation jobs have a path file
+        - error: jobId missing - send priorReport.jobId of the report the fix file will be based on
         - error: this job failed, so it has no report to write a fix file from
         - error: job is in progress
         - error: the fix file is already being written
@@ -583,7 +625,8 @@ components:
           remainingCalls: 0
         - error: the paid-through date has passed
         - error: no balance
-        - error: status must be In progress, Completed or Failed
+        - error: status must be In progress, Completed, Failed or Partial
+        - error: type must be Review, Validation, Combined or Fix
     Accepted:
       type: object
       required: [jobId]
@@ -612,7 +655,7 @@ components:
           type: string
           description: anthropic / claude, openai / chatgpt / gpt, deepseek, xai / grok, mistral, groq, google / gemini. Omit and the host guesses from the key.
     UseCases:
-      description: Up to 4. If you send more, only the first 4 are used.
+      description: 'Which use cases to check. Send an object with `specified`, `max` and `ids`, or just a list of titles: `["Send a payment"]` is short for `{ "specified": ["Send a payment"] }`.'
       oneOf:
         - type: object
           additionalProperties: false
@@ -621,6 +664,18 @@ components:
               type: array
               items:
                 type: string
+              description: Use cases by title. Up to 4. If you send more, only the first 4 are used.
+            max:
+              type: integer
+              minimum: 1
+              maximum: 4
+              default: 4
+              description: How many use cases to check in all, 1 to 4. With less than 4 `ids` and no `max`, only the specified IDs are checked.
+            ids:
+              type: array
+              items:
+                type: string
+              description: Use case IDs (uc-1, uc-2…) from the useCaseRecords of the job in priorReport.jobId. Needs priorReport.jobId. The ones named in ids and specified are checked first, and the rest are chosen up to max. Naming more than max is refused.
         - type: array
           items:
             type: string
@@ -675,8 +730,9 @@ components:
           format: email
           description: >-
             One address. When the job ends Completed or Failed, TrailCheck sends one email
-            there from info@trailcheck.dev, saying how to get the report and fix file. Nothing
-            is attached. Not an address is an error (400 `notifyEmail must be an email address`).
+            there from info@trailcheck.dev, saying how to get the report, and what you can start next. Nothing
+            is attached. Not an address is an error (400 `notifyEmail must be an email address`). A start again from a failed job without
+            `notifyEmail` uses the failed job's address.
         priorReport:
           $ref: "#/components/schemas/PriorReport"
         guidelines:
@@ -687,14 +743,24 @@ components:
             A run-again that omits it uses the guidelines from the prior Review when
             that job had them. A string on this start is the file for this job.
             Not a string, or sent on Validation, is an error. Combined rejects this field the same way.
-    GenerateFixStart:
+    FixStart:
       type: object
       additionalProperties: false
-      required: [aiModel]
-      description: "`aiModel` is required (`primaryName` required), the same as a start."
+      required: [priorReport, aiModel]
+      description: "`priorReport.jobId` names one Review, Validation, Combined or Fix job. `aiModel` is required (`primaryName` required), the same as any start."
       properties:
+        priorReport:
+          $ref: "#/components/schemas/PriorReport"
         aiModel:
           $ref: "#/components/schemas/AiModel"
+        notifyEmail:
+          type: string
+          format: email
+          description: >-
+            One address. When the job ends Completed, Partial or Failed, TrailCheck sends one email
+            there from info@trailcheck.dev, saying how to get the fix file. Nothing is attached.
+            Not an address is an error (400 `notifyEmail must be an email address`). Omit it to use
+            the prior report job's address.
     CombinedStart:
       type: object
       additionalProperties: false
@@ -713,8 +779,9 @@ components:
           format: email
           description: >-
             One address. When the job ends Completed or Failed, TrailCheck sends one email
-            there from info@trailcheck.dev, saying how to get the report and fix file. Nothing
-            is attached. Not an address is an error (400 `notifyEmail must be an email address`).
+            there from info@trailcheck.dev, saying how to get the report, and what you can start next. Nothing
+            is attached. Not an address is an error (400 `notifyEmail must be an email address`). A start again from a failed job without
+            `notifyEmail` uses the failed job's address.
     JobListEntry:
       type: object
       required: [id, type, title, status, startedAt]
@@ -724,12 +791,13 @@ components:
           format: uuid
         type:
           type: string
-          enum: [Review, Validation, Combined]
+          enum: [Review, Validation, Combined, Fix]
         title:
           type: string
         status:
           type: string
-          enum: [In progress, Completed, Failed]
+          enum: [In progress, Completed, Failed, Partial]
+          description: Partial is only for a Fix job whose fix file stops partway.
         startedAt:
           type: string
           format: date-time
@@ -758,16 +826,17 @@ components:
       properties:
         callUsed:
           type: boolean
-          description: true if this job used a call from the plan; false if it ended with no report and the call was given back.
+          description: true if this job used a call from the plan; false when the job ended with no report/fix file and the call was given back, or when the start didn't use a call.
         id:
           type: string
           format: uuid
         status:
           type: string
-          enum: [In progress, Completed, Failed]
+          enum: [In progress, Completed, Failed, Partial]
+          description: Partial is only for a Fix job whose fix file stops partway.
         type:
           type: string
-          enum: [Review, Validation, Combined]
+          enum: [Review, Validation, Combined, Fix]
         title:
           type: string
         startedAt:
@@ -785,8 +854,8 @@ components:
             `You weren't charged a call for this run.`
         failureCode:
           type: string
-          description: When status is Failed. The reason as a code.
-          enum: [reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error]
+          description: When status is Failed. The reason as a code. On a Fix job it can also be refused (the fix file check refused a line) or not_handed_in (the AI didn't hand in a fix file).
+          enum: [reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, findings_unreadable, internal_error, refused, not_handed_in]
         score:
           type: number
           description: When parsed. If scoreStatus is present, this is the second number in that string.
@@ -795,22 +864,9 @@ components:
           description: With score. What the score is out of. 100 for a Review. Lower on a Validation or Combined report when use cases or checks didn't run.
         scoreStatus:
           type: string
-          description: Present when the score in the report did not match a count based on the findings. The string names both numbers. `score` is then the second number in that string. Omitted when the two numbers already matched.
+          description: "Present in two cases. When the score in the report did not match a count based on the findings, it names both numbers, and `score` is then the second number. When the server couldn't read the report's findings, it's `The server couldn't read the report's findings, so the score wasn't confirmed.` The job is still Completed, and `score` is the number the report gives, when it gives one."
         summary:
           type: string
-        fixFileStatus:
-          type: string
-          description: >-
-            Present when the report exists and there is no complete fix file. Says why, then what to do:
-            `writing the fix file` while it is being written; the AI didn't hand one in; a refused line
-            (`fix file was not saved: line …`); a failure (`fix file failed: …`, the same causes as a job
-            failure); or `fix file is incomplete: it stops before task #<n>. The report is saved. Call
-            Generate Fix File again to write the rest.` (the file says so at the top). The job's status
-            does not change. Calling Generate Fix File again goes on from where an incomplete one stopped.
-        fixFileCode:
-          type: string
-          description: With fixFileStatus. The reason as a code.
-          enum: [writing, incomplete, refused, not_handed_in, reply_limit, input_limit, no_report, key_refused, no_credit, rate_limited, model_not_found, request_rejected, ai_unavailable, connection_lost, method_unavailable, server_restarted, internal_error]
         primaryName:
           type: string
           description: Model name for this job. The API key and the AI model key are not returned.
@@ -818,10 +874,10 @@ components:
           type: array
           items:
             type: string
-          description: Earlier job ids this run started from. Omitted when this job did not start from one.
+          description: The earlier reports this job was made from. On a Validation from a Review, the Review. On a Combined job, every job it joined. On a rerun, the job it reran. On a Fix job, the report its fix file was made from. Omitted when this job didn't start from one.
         useCaseRecords:
           type: array
-          description: Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report (see useCaseScoresNote). Each use case's score counts only the findings that affect it. The overall score counts every finding, so it can be lower than every use case's score. id is an empty string.
+          description: "Each use case read from the report. Omitted until the report is saved, and when the use cases cannot be read from the report (see useCaseScoresNote). Each use case's score counts only the findings that affect it. The overall score counts every finding, so it can be lower than every use case's score. Each entry has an id: uc-1, uc-2, and so on. A job started from an earlier job keeps that job's IDs for the same use cases. Numbers can skip: a use case keeps its ID from job to job, and a new one gets the next unused number. Send them in useCases.ids to choose which use cases a new job checks."
           items:
             type: object
             required: [id, title, goal, steps, provided, findingNumbers, score]
@@ -859,11 +915,35 @@ components:
           type: string
           description: >-
             Present when the use cases couldn't be read from the report, so there are no useCaseRecords.
-            The job is still Completed: the report, score and fix file are not affected. Always
+            The job is still Completed: the report and score are not affected. Always
             `The per-use-case scores couldn't be read. The use cases are in the report.`
         notifyEmail:
           type: string
           description: The address sent on the start, when one was sent. The email went there when the job ended.
+        partialFixDetails:
+          type: object
+          description: On a Partial Fix job, where its fix file stops.
+          properties:
+            note:
+              type: string
+              example: "The fix file was only partially generated. It stops before task #7."
+            stopsBeforeTask:
+              type: integer
+              example: 7
+        includesReviewFindings:
+          type: boolean
+          description: true when a Validation's report already includes the Review's findings. You don't need to call /combine. Present only when true.
+        mergeNote:
+          type: string
+          description: "Returned when the Validation's report doesn't include the Review's findings. To get them in one report, call /combine with the Validation and the Review. The first /combine after this is free. Always `Review and Validation steps both completed successfully, but the reports didn't merge as expected. To get the combined report, call POST /combine with both job IDs. It's free this time.`"
+        fixJobIds:
+          type: array
+          items:
+            type: string
+          description: The fix files made from this report, oldest first. Get the newest with GET /jobs/<last ID>/fix.
+        continuedFromJobId:
+          type: string
+          description: This job picks up from an earlier one. It finishes a partial fix file, or retries a job that failed.
     CallList:
       type: array
       items:
