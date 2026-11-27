@@ -1,19 +1,20 @@
 arazzo: 1.0.1
 info:
   title: TrailCheck API
-  version: "2026-10-14"
+  version: "2026-11-27"
   description: |
-    Written **2026-09-16**. Updated **2026-11-22**.
+    Written **2026-09-16**. Updated **2026-11-27**.
 
     Machine-readable flows for the TrailCheck API. Step order and handoffs
     (`jobId` from the 202 into later GETs and `priorReport`).
     Contract: `openapi.yaml`. Agent how-to: `SKILL.md`.
 
-    Typical sequence: Review → Validation → Combined (`review-then-validation-then-combined`).
+    Typical sequence: Review → Validation → Fix (`review-then-validation-then-fix`). A Validation that
+    starts from a Review returns the combined report, and a Fix job from the Validation writes one
+    fix file for both.
 
     `GET /jobs/{jobId}/info` is not in these sequences. It is a separate call
-    (`getJobInfo`) when the caller wants status, `score`, `scoreStatus`, or
-    `fixFileStatus`.
+    (`getJobInfo`) when the caller wants status, `score`, or `scoreStatus`.
 
     Customer starts send `aiModel` on the body at runtime (`primaryName` required).
     This file does not hold keys.
@@ -26,7 +27,7 @@ workflows:
   - workflowId: review
     summary: A through read-through of the published docs and spec based on use cases.
     description: |
-      Writes `report.md` and `fix.md`. `POST /review` with `resources`.
+      Writes `report.md`. `POST /review` with `resources`.
       Keep `jobId` from the 202. The job list (`GET /jobs`) is how to find that id again.
     inputs:
       type: object
@@ -82,24 +83,13 @@ workflows:
             retryLimit: 120
             criteria:
               - condition: $statusCode == 409
-      - stepId: getFix
-        description: |
-          GET /jobs/{jobId}/fix. 200 the fix file.
-          409 while In progress. 404 `{ "error": "not found" }` unknown jobId; 404 `{ "error": "no fix file: see fixFileStatus in the job info" }` when the job finished with no fix file.
-          Wait while In progress. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $steps.start.outputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
 
   - workflowId: check-and-fetch
-    summary: The result from a job that already exists.
+    summary: The report from a job that already exists.
     description: |
-      GET report then GET fix. On Validation, also GET /jobs/{jobId}/path
-      (`getJobPath` / the `validation` workflow’s getPath step).
+      GET the report. On a Validation, also GET /jobs/{jobId}/path
+      (`getJobPath` / the `validation` workflow's getPath step).
+      For a Fix job's fix file, use `fetch-fix`.
     inputs:
       type: object
       required: [jobId]
@@ -112,7 +102,7 @@ workflows:
         description: |
           GET /jobs/{jobId}/report. 200 the report.
           409 `{ "error": "job is in progress" }` while In progress: wait and ask again.
-          404 `{ "error": "not found" }` unknown jobId. 404 `{ "error": "this job failed, so it has no report" }`.
+          404 `{ "error": "not found" }` unknown jobId. 404 `{ "error": "this job failed, no report available" }`.
         operationId: getJobReport
         parameters:
           - name: jobId
@@ -126,24 +116,12 @@ workflows:
             retryLimit: 120
             criteria:
               - condition: $statusCode == 409
-      - stepId: getFix
-        description: |
-          GET /jobs/{jobId}/fix. 200 the fix file.
-          409 while In progress. 404 `{ "error": "not found" }` unknown jobId; 404 `{ "error": "no fix file: see fixFileStatus in the job info" }` when the job finished with no fix file.
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $inputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
 
-  - workflowId: generate-fix
-    summary: Generate Fix File, on a job that already has a report.
+  - workflowId: fetch-fix
+    summary: The fix file from a Fix job that already exists.
     description: |
-      POST /jobs/{jobId}/fix. Same job. GET does not write the file.
-      If the job is In progress, this call is refused. So is a second request while the fix file is currently being written.
-      The job's status does not change while the fix file is written.
+      GET /jobs/{jobId}/fix with a Fix job's ID. Waits while the Fix job is In progress.
+      On a Partial Fix job, the file stops partway: its beginning says where and how to generate the rest.
     inputs:
       type: object
       required: [jobId]
@@ -151,25 +129,63 @@ workflows:
         jobId:
           type: string
           format: uuid
-    outputs:
-      jobId: $steps.start.outputs.jobId
+          description: The Fix job's ID.
     steps:
-      - stepId: start
-        description: POST /jobs/{jobId}/fix. Expected 202 `{ "jobId" }` with that same ID.
-        operationId: generateFixFile
+      - stepId: getFix
+        description: |
+          GET /jobs/{jobId}/fix. 200 the fix file.
+          409 `{ "error": "job is in progress" }` while In progress: wait and ask again.
+          404 `{ "error": "this job failed, no fix file available" }`: see failureDetails in the job info.
+          404 `{ "error": "Review job ID passed for a fix file. ..." }`: the ID is not a Fix job's; the text names the Fix job to use.
+        operationId: getJobFix
         parameters:
           - name: jobId
             in: path
             value: $inputs.jobId
+        successCriteria:
+          - condition: $statusCode == 200
+        onFailure:
+          - name: waitForFix
+            type: retry
+            retryLimit: 120
+            criteria:
+              - condition: $statusCode == 409
+
+  - workflowId: generate-fix
+    summary: Generate Fix File, from a job's report.
+    description: |
+      POST /fix with priorReport.jobId: the Review, Validation or Combined job whose report the fix file should be based on, or a Partial Fix job to finish it.
+      The 202 has a new job ID: the Fix job. Its fix file is at GET /jobs/{Fix job ID}/fix.
+      Uses a call. Finishing a Partial Fix job doesn't.
+      One Fix job at a time per report: a second one while it runs → 409 `{ "error": "the fix file is already being written" }`.
+    inputs:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+          description: The job whose report the fix file should be based on, or a Partial Fix job.
+    outputs:
+      fixJobId: $steps.start.outputs.jobId
+    steps:
+      - stepId: start
+        description: POST /fix. Expected 202 `{ "jobId" }`, the new Fix job's ID.
+        operationId: postFix
+        requestBody:
+          contentType: application/json
+          payload:
+            priorReport:
+              jobId: $inputs.jobId
         successCriteria:
           - condition: $statusCode == 202
         outputs:
           jobId: $response.body.jobId
       - stepId: getFix
         description: |
-          GET /jobs/{jobId}/fix. 200 the fix file.
-          409 `{ "error": "the fix file is currently being written" }` while it is not written.
-          Wait while info `fixFileStatus` is `writing the fix file`. Stop when info `fixFileStatus` is there and is not `writing the fix file`: it says why and what to do, and `fixFileCode` gives the reason. The report is saved and the job is Completed.
+          GET /jobs/{jobId}/fix with the Fix job's ID. 200 the fix file.
+          409 `{ "error": "job is in progress" }` while In progress: wait and ask again.
+          404 `{ "error": "this job failed, no fix file available" }`: see failureDetails in the job info.
         operationId: getJobFix
         parameters:
           - name: jobId
@@ -187,7 +203,7 @@ workflows:
   - workflowId: run-again
     summary: Rerun of a Review, based on a prior Review. Uses the same use cases as the original.
     description: |
-      `POST /review` with `priorReport.jobId`. That job must have a `report.md`.
+      `POST /review` with `priorReport.jobId`. That job must have a `report.md`, or be a failed Review to start it again: its start is copied, and anything sent on this start replaces what's copied.
       If `resources` are also sent, this job uses the prior job’s URLs and the new ones. None are dropped.
       If `guidelines` is omitted, this job uses the guidelines from that prior Review when that job had them.
       A `guidelines` string on this start is the file for this job.
@@ -245,19 +261,11 @@ workflows:
             retryLimit: 120
             criteria:
               - condition: $statusCode == 409
-      - stepId: getFix
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $steps.start.outputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
 
   - workflowId: validation
     summary: A real build of the use cases.
     description: |
-      Writes `report.md`, `fix.md`, and `path.md`.
+      Writes `report.md` and `path.md`. When it starts from a Review, `report.md` is the combined report: the Review's findings and the Validation's, in one report.
       Note: At the moment, the cold build is a paper build only: the agent works through the use cases from your resources. It doesn't run code or send authenticated requests to your API.
       `POST /validation` with `priorReport.jobId` of a Review that has `report.md`.
       To run a Validation again, that id is the previous Validation job.
@@ -312,14 +320,6 @@ workflows:
             retryLimit: 120
             criteria:
               - condition: $statusCode == 409
-      - stepId: getFix
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $steps.start.outputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
       - stepId: getPath
         description: |
           GET /jobs/{jobId}/path. 200 the path file.
@@ -341,8 +341,8 @@ workflows:
   - workflowId: combined
     summary: One Combined report from a Review job and a Validation job.
     description: |
-      Writes `report.md` and `fix.md`. `path.md` stays on the Validation job.
-      Intended for a Review and a Validation of the same use cases. The host does not check.
+      Writes `report.md`. `path.md` stays on the Validation job. Optional: a Validation that starts from a Review already returns the combined report. Use this when the Validation's job info has `mergeNote`.
+      Intended for jobs about the same resources. The host does not check.
       Unrelated jobs will combine to create a misleading report.
     inputs:
       type: object
@@ -388,20 +388,12 @@ workflows:
             retryLimit: 120
             criteria:
               - condition: $statusCode == 409
-      - stepId: getFix
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $steps.start.outputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
 
   - workflowId: combine-jobs
     summary: One Combined report from a list of jobs, for example two Reviews that split a job's use cases.
     description: |
-      Writes `report.md` and `fix.md`. Pass one or more Review jobs, plus any related Validation jobs.
-      Intended for jobs about the same use cases. The host does not check.
+      Writes `report.md`. Pass one or more Review jobs, plus any related Validation jobs. If a Validation's report already includes the Review's findings, they aren't counted twice.
+      Intended for jobs about the same resources, for example two Reviews or two Validations that split the use cases. The host does not check.
       Unrelated jobs will combine to create a misleading report.
     inputs:
       type: object
@@ -444,23 +436,13 @@ workflows:
             type: retry
             retryLimit: 120
             criteria:
-              - context: $response.body
-                type: jsonpath
-                condition: $.error == 'no report yet'
-      - stepId: getFix
-        operationId: getJobFix
-        parameters:
-          - name: jobId
-            in: path
-            value: $steps.start.outputs.jobId
-        successCriteria:
-          - condition: $statusCode == 200
+              - condition: $statusCode == 409
 
-  - workflowId: review-then-validation-then-combined
-    summary: Typical sequence. Review, then Validation, then Combined.
+  - workflowId: review-then-validation-then-fix
+    summary: Typical sequence. Review, then Validation, then Fix.
     description: |
-      Handoff is `jobId` from each 202. Validation `priorReport` is the Review id.
-      Combined `priorReport` is the Review id and the Validation id.
+      Handoff is `jobId` from each 202. Validation `priorReport` is the Review id, and its report is the combined report.
+      Fix `priorReport` is the Validation id, so one fix file covers both.
     inputs:
       type: object
       required: [resources]
@@ -481,7 +463,7 @@ workflows:
     outputs:
       reviewJobId: $steps.review.outputs.jobId
       validationJobId: $steps.validation.outputs.jobId
-      combinedJobId: $steps.combined.outputs.jobId
+      fixJobId: $steps.fix.outputs.fixJobId
     steps:
       - stepId: review
         workflowId: review
@@ -499,10 +481,8 @@ workflows:
         parameters:
           - name: reviewJobId
             value: $steps.review.outputs.jobId
-      - stepId: combined
-        workflowId: combined
+      - stepId: fix
+        workflowId: generate-fix
         parameters:
-          - name: reviewJobId
-            value: $steps.review.outputs.jobId
-          - name: validationJobId
+          - name: jobId
             value: $steps.validation.outputs.jobId
